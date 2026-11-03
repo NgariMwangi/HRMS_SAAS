@@ -22,6 +22,7 @@ services:
       GOOGLE_COOKIE_SECURE: "true"
   frontend:
     build: ./frontend
+    ports: !override []
     restart: unless-stopped
   gateway:
     image: caddy:2.10-alpine

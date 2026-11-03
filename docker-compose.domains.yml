@@ -1,0 +1,44 @@
+# Public server deployment: docker compose -f docker-compose.yml -f docker-compose.domains.yml up -d --build
+# Requires Docker Compose >= 2.24.4 for !override. Local development uses only docker-compose.yml.
+services:
+  postgres:
+    ports: !override ["127.0.0.1:5433:5432"]
+  redis:
+    ports: !override ["127.0.0.1:6380:6379"]
+  backend:
+    ports: !override ["127.0.0.1:8000:8000"]
+    environment:
+      JWT_SECRET: ${JWT_SECRET:?Set a strong JWT_SECRET in .env}
+      PLATFORM_ADMIN_PASSWORD: ${PLATFORM_ADMIN_PASSWORD:?Set PLATFORM_ADMIN_PASSWORD in .env}
+      GOOGLE_COOKIE_SECURE: "true"
+      DOMAIN_TLS_SECRET: ${DOMAIN_TLS_SECRET:?Set DOMAIN_TLS_SECRET in .env}
+    command: ["sh", "-c", "alembic upgrade head && python -m app.db.seed && uvicorn app.main:app --host 0.0.0.0 --port 8000 --no-access-log"]
+    restart: unless-stopped
+  performance-reminders:
+    environment:
+      JWT_SECRET: ${JWT_SECRET:?Set a strong JWT_SECRET in .env}
+      PLATFORM_ADMIN_PASSWORD: ${PLATFORM_ADMIN_PASSWORD:?Set PLATFORM_ADMIN_PASSWORD in .env}
+      DOMAIN_TLS_SECRET: ${DOMAIN_TLS_SECRET:?Set DOMAIN_TLS_SECRET in .env}
+      GOOGLE_COOKIE_SECURE: "true"
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+  gateway:
+    image: caddy:2.10-alpine
+    ports: ["80:80", "443:443", "443:443/udp"]
+    environment:
+      DOMAIN_TLS_SECRET: ${DOMAIN_TLS_SECRET:?Set DOMAIN_TLS_SECRET in .env}
+      TLS_EMAIL: ${TLS_EMAIL:?Set your TLS certificate contact email in .env}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_started
+    restart: unless-stopped
+volumes:
+  caddy_data:
+  caddy_config:

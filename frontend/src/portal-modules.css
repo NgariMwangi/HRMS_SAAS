@@ -1,0 +1,13 @@
+.portal-module-links { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+.portal-module-link { display: flex; flex-direction: column; gap: 7px; padding: 18px; text-align: left; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); }
+button.portal-module-link { cursor: pointer; font: inherit; }
+button.portal-module-link:hover, button.portal-module-link:focus-visible { border-color: var(--accent); }
+.portal-module-link span { color: var(--muted); font-size: 13px; }
+.portal-module-details { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+.portal-module-details dt { color: var(--muted); font-size: 13px; }
+.portal-module-details dd { margin: 5px 0 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+.portal-preserve-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.portal-review-task { padding: 14px 0; border-top: 1px solid var(--line); }
+.portal-review-task:first-child { border-top: 0; }
+.portal-review-task p { color: var(--muted); margin: 8px 0; }
+.portal-review-links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }

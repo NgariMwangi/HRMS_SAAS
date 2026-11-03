@@ -1,0 +1,12 @@
+export type Job = { id: string; title: string; description: string; requirements: string; location: string; employment_type: string; openings: number; closing_date: string | null; department_id: string | null; job_title_id: string | null; manager_id: string | null; status: string; created_at: string };
+export type Candidate = { id: string; first_name: string; last_name: string; email: string; phone: string; source: string; notes?: string; cv_name: string | null; employee_id?: string | null; created_at: string };
+export type Application = { id: string; job_id: string; candidate_id: string; stage: string; created_at: string };
+export type Feedback = { rating: number; recommendation: string; comments: string; submitted_at: string };
+export type Interview = { id: string; application_id: string; title: string; starts_at: string; duration_minutes: number; location: string; interviewer_ids: string[]; feedback: Record<string, Feedback>; status: string };
+export type Offer = { id: string; application_id: string; salary: string; currency: string; start_date: string; expires_on: string | null; terms: string; status: string };
+export type RecruitmentEvent = { id: string; application_id: string | null; job_id: string; action: string; note: string; created_at: string };
+export type RecruitmentData = { jobs: Job[]; candidates: Candidate[]; applications: Application[]; interviews: Interview[]; offers: Offer[]; events: RecruitmentEvent[] };
+export type Person = { id: string; name: string; can_interview: boolean };
+export const stages = ["APPLIED", "SHORTLISTED", "INTERVIEW", "OFFER", "HIRED", "REJECTED", "WITHDRAWN"];
+export const stageLabel = (value: string) => value.toLowerCase().replace(/_/g, " ").replace(/^./, s => s.toUpperCase());
+export const candidateName = (c?: Candidate) => c ? `${c.first_name} ${c.last_name}` : "Candidate";

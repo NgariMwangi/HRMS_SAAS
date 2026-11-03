@@ -1,0 +1,82 @@
+name: hrms-saas
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: hrms
+      POSTGRES_PASSWORD: hrms
+      POSTGRES_DB: hrms
+      TZ: UTC
+      PGTZ: UTC
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hrms -d hrms"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "8000:8000"
+    environment: &backend_environment
+      HRMS_BASE_DOMAIN: ${HRMS_BASE_DOMAIN:-hrms.techtutor.co.ke}
+      HRMS_DOMAIN_TARGET: ${HRMS_DOMAIN_TARGET:-hrms.techtutor.co.ke}
+      HRMS_CENTRAL_HOSTS: ${HRMS_CENTRAL_HOSTS:-localhost,127.0.0.1,::1,test,backend}
+      DOMAIN_TLS_SECRET: ${DOMAIN_TLS_SECRET:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_COOKIE_SECURE: ${GOOGLE_COOKIE_SECURE:-false}
+      DATABASE_URL: postgresql+asyncpg://hrms:hrms@postgres:5432/hrms
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: dev-insecure-change-me
+      ACCESS_TOKEN_EXPIRE_MINUTES: "10"
+      REFRESH_TOKEN_EXPIRE_MINUTES: "30"
+      TRIAL_DAYS: "14"
+      PLATFORM_ADMIN_EMAIL: owner@example.com
+      PLATFORM_ADMIN_PASSWORD: ChangeMe123!
+      PLATFORM_ADMIN_NAME: Platform Owner
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 25s
+
+  performance-reminders:
+    build:
+      context: ./backend
+    command: ["python", "-m", "app.services.performance_reminder_worker"]
+    environment: *backend_environment
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

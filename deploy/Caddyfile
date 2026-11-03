@@ -1,0 +1,24 @@
+{
+    email {$TLS_EMAIL}
+    on_demand_tls {
+        ask http://backend:8000/domains/tls-allowed?key={$DOMAIN_TLS_SECRET}
+    }
+}
+
+https:// {
+    tls {
+        on_demand
+    }
+    encode zstd gzip
+    @private path /domains/tls-allowed /domains/tls-allowed/*
+    handle @private {
+        respond "Not found" 404
+    }
+    @api path /domains /domains/* /reports /reports/* /recruitment /recruitment/* /employee-portal /employee-portal/* /performance /performance/* /access /access/* /auth /auth/* /companies /companies/* /branches /branches/* /departments /departments/* /job-titles /job-titles/* /document-categories /document-categories/* /leave-types /leave-types/* /public-holidays /public-holidays/* /leave-balances /leave-balances/* /leave-requests /leave-requests/* /documents /documents/* /employees /employees/* /lifecycle /lifecycle/* /audit-logs /audit-logs/* /attendance /attendance/* /payroll /payroll/* /deduction-types /deduction-types/* /benefit-types /benefit-types/* /countries /countries/* /platform /platform/* /health
+    handle @api {
+        reverse_proxy backend:8000
+    }
+    handle {
+        reverse_proxy frontend:80
+    }
+}

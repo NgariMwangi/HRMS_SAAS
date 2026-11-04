@@ -42,6 +42,8 @@ from app.core.security import hash_password
 from app.models import Company, Employee, EmployeeDocument, EmployeeNextOfKin, User
 from app.schemas.attendance import EmployeeLoginCreate
 from app.schemas.auth import UserRead
+from app.schemas.employee_login import EmployeeLoginUpdate
+from app.services.employee_logins import update_credentials
 from app.schemas.document import CompanyDocumentRead
 from app.schemas.employee import (
     EmployeeSummaryRead,
@@ -62,7 +64,7 @@ router = APIRouter(prefix="/employees", tags=["employees"])
 
 ALLOWED_PHOTO_TYPES = {"image/jpeg", "image/png", "image/webp"}
 MAX_PHOTO_BYTES = 10 * 1024 * 1024
-_STATUTORY_FIELDS = ("id_number", "nssf_no", "shif_no")
+_STATUTORY_FIELDS = ("id_number", "pin_number", "nssf_no", "shif_no")
 
 
 def _employee_conflict(exc: IntegrityError) -> HTTPException:
@@ -243,6 +245,25 @@ async def create_employee_login(
         ) from exc
     await session.refresh(login)
     return login
+
+
+@router.patch("/{employee_id}/login", response_model=UserRead, dependencies=[Depends(require_access('people.manage'))])
+async def update_employee_login(
+    employee_id: uuid.UUID,
+    payload: EmployeeLoginUpdate,
+    tenant_id: uuid.UUID = Depends(get_tenant_id),
+    session: AsyncSession = Depends(get_tenant_db),
+    user: User = Depends(get_current_user),
+) -> User:
+    if user.role != "OWNER":
+        raise HTTPException(403, "Only the workspace owner can change employee logins")
+    employee = await _visible_employee(session, employee_id, tenant_id)
+    login = await session.scalar(select(User).where(User.employee_id == employee.id, User.tenant_id == tenant_id).with_for_update())
+    if login is None:
+        raise HTTPException(404, "This employee does not have a login yet")
+    if login.role == "OWNER":
+        raise HTTPException(403, "Use your account settings to update an owner's login")
+    return await update_credentials(session, login, payload.email, payload.password)
 
 
 @router.post("/{employee_id}/clock-device/reset", response_model=EmployeeRead, dependencies=[Depends(require_access('attendance.manage'))])

@@ -166,7 +166,7 @@ def _normalize_employee(data: dict) -> dict:
         data["email"] = data["email"].strip().lower() or None
     if "personal_email" in data and isinstance(data["personal_email"], str):
         data["personal_email"] = data["personal_email"].strip().lower() or None
-    for field in ("id_number", "nssf_no", "shif_no"):
+    for field in ("id_number", "pin_number", "nssf_no", "shif_no"):
         if field in data:
             data[field] = blank_to_none(data[field])
     return data

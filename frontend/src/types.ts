@@ -176,6 +176,7 @@ export type Employee = {
   date_of_birth: string | null;
   id_number: string | null;
   nssf_no: string | null;
+  pin_number: string | null;
   shif_no: string | null;
   email: string | null;
   personal_email: string | null;

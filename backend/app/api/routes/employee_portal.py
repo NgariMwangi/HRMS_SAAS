@@ -2,7 +2,7 @@
 from datetime import date
 from decimal import Decimal
 import uuid
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,6 +19,9 @@ from app.services import performance as performance_service
 from app.services.access import permissions_for
 from app.schemas.employee import EmployeeRead, NextOfKinReplace, NextOfKinRead
 from app.schemas.payroll import PayslipRead
+from app.schemas.auth import UserRead
+from app.schemas.employee_login import OwnLoginUpdate
+from app.services.employee_logins import update_credentials
 
 router = APIRouter(prefix="/employee-portal", tags=["employee portal"])
 
@@ -160,11 +163,19 @@ async def development_progress(identity: uuid.UUID, payload: DevelopmentUpdate, 
 
 
 @router.get("/payslips/{identity}", dependencies=[Depends(require_access("payroll.view_own"))])
-async def payslip(identity: uuid.UUID, employee: Employee = Depends(portal_employee), session: AsyncSession = Depends(get_tenant_db)):
-    rows = await own_payslips(session, employee, identity)
-    if not rows:
-        raise HTTPException(404, "Payslip not found")
-    return rows[0]
+async def payslip(identity: uuid.UUID, response: Response, employee: Employee = Depends(portal_employee), session: AsyncSession = Depends(get_tenant_db)):
+    from app.services.payslips import document
+    response.headers["Cache-Control"] = "private, no-store"
+    company = await session.get(Company, employee.company_id)
+    return await document(session, identity, company.tenant_id, employee)
+
+
+@router.patch("/login", response_model=UserRead, dependencies=[Depends(require_access("people.view_own", "people.manage"))])
+async def update_own_login(payload: OwnLoginUpdate, employee: Employee = Depends(portal_employee), user: User = Depends(get_current_user), session: AsyncSession = Depends(get_tenant_db)):
+    await session.refresh(user, with_for_update=True)
+    if not verify_password(payload.current_password, user.password_hash):
+        raise HTTPException(400, "Current password is incorrect")
+    return await update_credentials(session, user, payload.email)
 
 
 class PasswordChange(BaseModel):

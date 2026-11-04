@@ -1297,6 +1297,7 @@ function EmployeeForm({
     date_of_birth: initial?.date_of_birth ?? "",
     id_number: initial?.id_number ?? "",
     nssf_no: initial?.nssf_no ?? "",
+    pin_number: initial?.pin_number ?? "",
     shif_no: initial?.shif_no ?? "",
     email: initial?.email ?? "",
     personal_email: initial?.personal_email ?? "",
@@ -1343,6 +1344,7 @@ function EmployeeForm({
       date_of_birth: emptyToNull(form.date_of_birth),
       id_number: emptyToNull(form.id_number),
       nssf_no: emptyToNull(form.nssf_no),
+      pin_number: emptyToNull(form.pin_number),
       shif_no: emptyToNull(form.shif_no),
       email: emptyToNull(form.email),
       personal_email: emptyToNull(form.personal_email),
@@ -1381,6 +1383,7 @@ function EmployeeForm({
         <label>Date of birth<input type="date" value={form.date_of_birth} onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })} /></label>
         <label>ID no.<input value={form.id_number} onChange={(e) => setForm({ ...form, id_number: e.target.value })} autoComplete="off" /></label>
         <label>NSSF no.<input value={form.nssf_no} onChange={(e) => setForm({ ...form, nssf_no: e.target.value })} autoComplete="off" /></label>
+        <label>PIN number<input value={form.pin_number} onChange={(e) => setForm({ ...form, pin_number: e.target.value })} autoComplete="off" /></label>
         <label>SHIF no.<input value={form.shif_no} onChange={(e) => setForm({ ...form, shif_no: e.target.value })} autoComplete="off" /></label>
         <label>Work email<input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></label>
         <label>Personal email<input type="email" value={form.personal_email} onChange={(e) => setForm({ ...form, personal_email: e.target.value })} /></label>

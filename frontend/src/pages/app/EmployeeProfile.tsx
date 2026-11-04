@@ -125,6 +125,7 @@ export default function EmployeeProfile() {
             <div><dt>Date of birth</dt><dd>{formatDate(employee.date_of_birth)}</dd></div>
             <div><dt>ID no.</dt><dd>{employee.id_number ?? "—"}</dd></div>
             <div><dt>NSSF no.</dt><dd>{employee.nssf_no ?? "—"}</dd></div>
+            <div><dt>PIN number</dt><dd>{employee.pin_number ?? "—"}</dd></div>
             <div><dt>SHIF no.</dt><dd>{employee.shif_no ?? "—"}</dd></div>
             <div><dt>Job title</dt><dd>{title?.name ?? "—"}</dd></div>
             <div><dt>Department</dt><dd>{department?.name ?? "—"}</dd></div>
@@ -152,6 +153,7 @@ export default function EmployeeProfile() {
         employee={employee}
         token={token}
         canManageHr={hasPermission("people.manage")}
+        canEditLogin={user.role === "OWNER" && hasPermission("people.manage")}
         canResetDevice={hasPermission("attendance.manage")}
         onChanged={setEmployee}
         notify={notify}

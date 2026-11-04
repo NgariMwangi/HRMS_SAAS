@@ -46,6 +46,7 @@ type FormState = {
   date_of_birth: string;
   id_number: string;
   nssf_no: string;
+  pin_number: string;
   shif_no: string;
   email: string;
   personal_email: string;
@@ -67,6 +68,7 @@ const empty: FormState = {
   date_of_birth: "",
   id_number: "",
   nssf_no: "",
+  pin_number: "",
   shif_no: "",
   email: "",
   personal_email: "",
@@ -89,6 +91,7 @@ function fromEmployee(row: Employee, fallbackBranch: string): FormState {
     date_of_birth: row.date_of_birth ?? "",
     id_number: row.id_number ?? "",
     nssf_no: row.nssf_no ?? "",
+    pin_number: row.pin_number ?? "",
     shif_no: row.shif_no ?? "",
     email: row.email ?? "",
     personal_email: row.personal_email ?? "",
@@ -113,6 +116,7 @@ function stepFields(form: FormState, stepIndex: number): Record<string, string |
       date_of_birth: form.date_of_birth || null,
       id_number: form.id_number.trim() || null,
       nssf_no: form.nssf_no.trim() || null,
+      pin_number: form.pin_number.trim() || null,
       shif_no: form.shif_no.trim() || null,
     };
   }
@@ -434,6 +438,7 @@ export default function EmployeeCreate() {
             <label>Date of birth<input type="date" {...bind("date_of_birth")} /></label>
             <label>ID no.<input {...bind("id_number")} autoComplete="off" /></label>
             <label>NSSF no.<input {...bind("nssf_no")} autoComplete="off" /></label>
+            <label>PIN number<input {...bind("pin_number")} autoComplete="off" /></label>
             <label>SHIF no.<input {...bind("shif_no")} autoComplete="off" /></label>
             <label style={{ gridColumn: "1 / -1" }}>
               Passport photo
@@ -570,6 +575,7 @@ export default function EmployeeCreate() {
               <div><dt>Name</dt><dd>{employeeName(form) || "—"}</dd></div>
               <div><dt>ID no.</dt><dd>{form.id_number || "—"}</dd></div>
               <div><dt>NSSF no.</dt><dd>{form.nssf_no || "—"}</dd></div>
+              <div><dt>PIN number</dt><dd>{form.pin_number || "—"}</dd></div>
               <div><dt>SHIF no.</dt><dd>{form.shif_no || "—"}</dd></div>
               <div><dt>Work email</dt><dd>{form.email || "—"}</dd></div>
               <div><dt>Personal email</dt><dd>{form.personal_email || "—"}</dd></div>

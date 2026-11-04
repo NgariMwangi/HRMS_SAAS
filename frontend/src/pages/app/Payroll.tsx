@@ -1,3 +1,4 @@
+import PayslipDocument from "../../components/PayslipDocument";
 import { FormEvent, Fragment, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useWorkspace } from "../../context/WorkspaceContext";
@@ -242,14 +243,14 @@ export function PayrollBoard({
                                   aria-expanded={slipId === slip.id}
                                   onClick={() => setSlipId((current) => (current === slip.id ? null : slip.id))}
                                 >
-                                  {slipId === slip.id ? "Hide lines" : "Deductions"}
+                                  {slipId === slip.id ? "Hide payslip" : "View / download payslip"}
                                 </button>
                               </td>
                             </tr>
                             {slipId === slip.id ? (
                               <tr>
                                 <td colSpan={5} style={{ paddingTop: 0 }}>
-                                  <PayslipLines slip={slip} currency={open.currency_code} />
+                                  <PayslipDocument path={apiUrl(apiBase, `/payroll/payslips/${slip.id}`)} token={token} />
                                 </td>
                               </tr>
                             ) : null}
@@ -258,7 +259,7 @@ export function PayrollBoard({
                       </tbody>
                     </table>
                     {slipId ? null : (
-                      <p className="muted">Open Deductions on a person to see PAYE, NSSF Tier I / II, pension, loans and other lines.</p>
+                      <p className="muted">Open a payslip to view earnings, deductions and employer contributions, or download a PDF copy.</p>
                     )}
                   </div>
                 ) : null}
@@ -289,77 +290,3 @@ function belowOneThird(slip: Payslip): boolean {
   return Number(slip.net) * 3 < Number(slip.gross);
 }
 
-function deductionRows(slip: Payslip) {
-  const taxable = slip.lines.find((line) => line.code === "TAXABLE");
-  const deductions = slip.lines.filter((line) => line.kind === "DEDUCTION");
-  const rows: { id: string; name: string; amount: string; info?: boolean }[] = [];
-  let inserted = false;
-  for (const line of deductions) {
-    if (line.code === "PAYE" && taxable && !inserted) {
-      rows.push({ id: taxable.id, name: taxable.name, amount: taxable.amount, info: true });
-      inserted = true;
-    }
-    rows.push({ id: line.id, name: line.name, amount: line.amount });
-  }
-  if (taxable && !inserted) {
-    rows.push({ id: taxable.id, name: taxable.name, amount: taxable.amount, info: true });
-  }
-  return rows;
-}
-
-function PayslipLines({ slip, currency }: { slip: Payslip | null; currency: string | null }) {
-  if (!slip) return null;
-  const rows = deductionRows(slip);
-  const employer = slip.lines.filter((line) => line.kind === "EMPLOYER");
-  const earnings = slip.lines.filter((line) => line.kind === "EARNING" && line.code !== "TAXABLE");
-  return (
-    <div style={{ margin: "0.25rem 0 0.75rem" }}>
-      {earnings.length > 1 ? (
-        <p className="muted" style={{ marginTop: 0 }}>
-          {earnings.filter((line) => line.code !== "GROSS").map((line) => `${line.name} ${formatMoney(line.amount, currency)}`).join(" · ")}
-        </p>
-      ) : null}
-      <table className="org-table">
-        <thead>
-          <tr>
-            <th>Deduction</th>
-            <th>Employee</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.length === 0 ? (
-            <tr><td colSpan={2}>No employee deductions on this payslip.</td></tr>
-          ) : (
-            rows.map((line) => (
-              <tr key={line.id} className={line.info ? "muted" : undefined}>
-                <td data-label="Deduction">{line.name}</td>
-                <td data-label="Employee">{formatMoney(line.amount, currency)}</td>
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
-      {employer.length ? (
-        <>
-          <p className="muted">Employer contributions (not taken from net pay)</p>
-          <table className="org-table">
-            <thead>
-              <tr>
-                <th>Contribution</th>
-                <th>Employer</th>
-              </tr>
-            </thead>
-            <tbody>
-              {employer.map((line) => (
-                <tr key={line.id}>
-                  <td data-label="Contribution">{line.name}</td>
-                  <td data-label="Employer">{formatMoney(line.amount, currency)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </>
-      ) : null}
-    </div>
-  );
-}

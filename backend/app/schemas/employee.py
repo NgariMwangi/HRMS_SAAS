@@ -29,6 +29,7 @@ class EmployeeCreate(BaseModel):
     date_of_birth: date | None = None
     id_number: str | None = Field(default=None, max_length=40)
     nssf_no: str | None = Field(default=None, max_length=40)
+    pin_number: str | None = Field(default=None, max_length=40)
     shif_no: str | None = Field(default=None, max_length=40)
     email: EmailStr | None = None
     personal_email: EmailStr | None = None
@@ -54,6 +55,7 @@ class EmployeeUpdate(BaseModel):
     date_of_birth: date | None = None
     id_number: str | None = Field(default=None, max_length=40)
     nssf_no: str | None = Field(default=None, max_length=40)
+    pin_number: str | None = Field(default=None, max_length=40)
     shif_no: str | None = Field(default=None, max_length=40)
     email: EmailStr | None = None
     personal_email: EmailStr | None = None
@@ -139,6 +141,7 @@ class EmployeeRead(BaseModel):
     date_of_birth: date | None
     id_number: str | None = None
     nssf_no: str | None = None
+    pin_number: str | None = None
     shif_no: str | None = None
     email: str | None
     personal_email: str | None

@@ -136,6 +136,7 @@ export default function AdminEmployeeProfile() {
             <div><dt>Date of birth</dt><dd>{formatDate(employee.date_of_birth)}</dd></div>
             <div><dt>ID no.</dt><dd>{employee.id_number ?? "—"}</dd></div>
             <div><dt>NSSF no.</dt><dd>{employee.nssf_no ?? "—"}</dd></div>
+            <div><dt>PIN number</dt><dd>{employee.pin_number ?? "—"}</dd></div>
             <div><dt>SHIF no.</dt><dd>{employee.shif_no ?? "—"}</dd></div>
             <div><dt>Work email</dt><dd>{employee.email ?? "—"}</dd></div>
             <div><dt>Personal email</dt><dd>{employee.personal_email ?? "—"}</dd></div>

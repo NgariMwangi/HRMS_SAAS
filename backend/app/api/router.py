@@ -33,6 +33,10 @@ from app.api.routes import (
 )
 
 api_router = APIRouter()
+from app.api.routes import payslips
+api_router.include_router(payslips.router)
+api_router.include_router(payslips.employee_router)
+api_router.include_router(payslips.platform_router)
 from app.api.routes import appraisals
 api_router.include_router(appraisals.router)
 api_router.include_router(appraisals.platform_router)

@@ -299,6 +299,7 @@ class Employee(Base):
     date_of_birth: Mapped[date | None] = mapped_column(Date)
     id_number: Mapped[str | None] = mapped_column(String(40))
     nssf_no: Mapped[str | None] = mapped_column(String(40))
+    pin_number: Mapped[str | None] = mapped_column(String(40))
     shif_no: Mapped[str | None] = mapped_column(String(40))
     email: Mapped[str | None] = mapped_column(String(255))
     personal_email: Mapped[str | None] = mapped_column(String(255))

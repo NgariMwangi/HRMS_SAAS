@@ -111,7 +111,7 @@ export function WorkspaceProvider({ children, employeePortal = false }: { childr
 
   useEffect(() => {
     if (!token) {
-      navigate(employeePortal ? "/employee/login" : "/");
+      navigate("/");
       return;
     }
     Promise.all([
@@ -137,7 +137,7 @@ export function WorkspaceProvider({ children, employeePortal = false }: { childr
         if (err.message.toLowerCase().includes("token") || err.message.toLowerCase().includes("authenticated")) {
           tenantToken.clear();
           tenantSession.clear();
-          navigate(employeePortal ? "/employee/login" : "/");
+          navigate("/");
         }
       });
   }, [navigate, token]);
@@ -180,7 +180,7 @@ export function WorkspaceProvider({ children, employeePortal = false }: { childr
         tenantToken.clear();
         tenantSession.clear();
         void clearPwaCaches();
-        navigate(employeePortal ? "/employee/login" : "/");
+        navigate("/");
       },
       toast,
       notify,

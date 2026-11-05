@@ -2,9 +2,10 @@ import { useCompanyDomain } from "../context/CompanyDomainContext";
 import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api, tenantSession, tenantToken } from "../api";
-import type { Country, TenantAuth } from "../types";
+import type { Country, Employee, TenantAuth } from "../types";
 import { Skel } from "../ui";
 import AuthLayout from "./AuthLayout";
+import GoogleSignIn from "../components/GoogleSignIn";
 
 const empty = {
   owner_full_name: "",
@@ -29,6 +30,7 @@ export default function TenantAuth() {
   }, [navigate]);
 
   useEffect(() => {
+    if (mode !== "register" || domainCompany) return;
     let cancelled = false;
     async function load(attempt = 0) {
       try {
@@ -50,7 +52,25 @@ export default function TenantAuth() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [mode, domainCompany]);
+
+  async function complete(auth: TenantAuth) {
+    if (auth.user.role === "EMPLOYEE" && !auth.user.employee_id) {
+      throw new Error("Ask HR to link your login to an employee record.");
+    }
+    tenantToken.set(auth.access_token, auth.refresh_token);
+    try {
+      const employee = auth.user.role === "EMPLOYEE"
+        ? (await api<{ employee: Employee }>("/employee-portal/me", { token: auth.access_token })).employee
+        : null;
+      tenantSession.set({ tenant: auth.tenant, user: auth.user,
+        companyId: employee?.company_id ?? auth.company?.id,
+        branchId: employee?.branch_id ?? auth.branch?.id });
+      navigate(auth.user.role === "EMPLOYEE" ? "/employee" : "/app", { replace: true });
+    } catch (err) {
+      tenantToken.clear(); tenantSession.clear(); throw err;
+    }
+  }
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -64,14 +84,7 @@ export default function TenantAuth() {
               method: "POST",
               body: JSON.stringify({ email: form.email, password: form.password }),
             });
-      tenantToken.set(body.access_token, body.refresh_token);
-      tenantSession.set({
-        tenant: body.tenant,
-        user: body.user,
-        companyId: body.company?.id,
-        branchId: body.branch?.id,
-      });
-      navigate(body.user.role === "EMPLOYEE" ? "/employee" : "/app");
+      await complete(body);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Request failed");
     } finally {
@@ -94,7 +107,7 @@ export default function TenantAuth() {
         <p className="lede">
           {mode === "register"
             ? "14-day trial. First company and branch included."
-            : "Access your HRMS workspace."}
+            : "Sign in to your company account. We will open the right portal for your role."}
         </p>
         <div className="tabs">
           <button type="button" className={mode === "login" ? "active" : ""} onClick={() => setMode("login")}>
@@ -134,14 +147,25 @@ export default function TenantAuth() {
             Password
             <input required type="password" minLength={8} autoComplete={mode === "register" ? "new-password" : "current-password"} {...bind("password")} />
           </label>
-          {error ? <p className="error">{error}</p> : null}
+          {error ? <p className="error" role="alert">{error}</p> : null}
           <button className="btn" type="submit" disabled={submitting}>
             {submitting ? "Please wait…" : mode === "register" ? "Create workspace" : "Continue"}
           </button>
         </form>
+        {mode === "login" && <>
+          <div className="portal-divider">or continue with Google</div>
+          <GoogleSignIn disabled={submitting} onCredential={async credential => {
+            setSubmitting(true); setError(null);
+            try {
+              await complete(await api<TenantAuth>("/auth/google/login", { method: "POST", credentials: "include",
+                body: JSON.stringify({ credential, ...(form.email && form.password ? { email: form.email, password: form.password } : {}) }) }));
+            } finally { setSubmitting(false); }
+          }} />
+          <p className="muted">Employees can use a linked Google account. To link it for the first time, enter your company login email and password above, then select Google.</p>
+          <p className="muted">Need an employee account or password reset? Contact your HR administrator.</p>
+        </>}
       </div>
       {!domainCompany && <Link className="quiet-link" to="/admin/login">Platform admin</Link>}
-      <Link className="quiet-link" to="/employee/login">Employee portal</Link>
     </AuthLayout>
   );
 }

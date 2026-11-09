@@ -1,7 +1,10 @@
 FROM node:22-bookworm-slim AS build
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci --include=dev --no-audit --no-fund --fetch-retries=3
+RUN node --version && npm --version \
+    && npm ping --fetch-timeout=20000 --fetch-retries=1 \
+    && npm ci --include=dev --no-audit --no-fund \
+       --fetch-timeout=60000 --fetch-retries=1 --loglevel=verbose
 COPY . .
 RUN npm run build
 

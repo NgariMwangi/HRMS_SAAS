@@ -197,6 +197,36 @@ async def list_employees(
     return list(result.all())
 
 
+@router.get("/alerts", dependencies=[Depends(require_access('people.view_all', 'people.manage'))])
+async def dashboard_alerts(
+    company_id: uuid.UUID,
+    tenant_id: uuid.UUID = Depends(get_tenant_id),
+    session: AsyncSession = Depends(get_tenant_db),
+    user: User = Depends(get_current_user),
+):
+    from datetime import date, datetime
+    from zoneinfo import ZoneInfo
+    from app.models.legacy_import import LegacyImportRecord
+    from app.services.employee_alerts import employee_alerts
+
+    await company_for_tenant(session, company_id, tenant_id)
+    employees = (await session.scalars(select(Employee).where(
+        Employee.company_id == company_id, Employee.status == "ACTIVE", await employee_scope(session, user)
+    ))).all()
+    # Preserve legacy probation dates without changing imported payroll/employment snapshots.
+    archived = (await session.scalars(select(LegacyImportRecord).where(
+        LegacyImportRecord.tenant_id == tenant_id, LegacyImportRecord.company_id == company_id,
+        LegacyImportRecord.source_table == "employees"
+    ))).all()
+    legacy_ends = {}
+    for record in archived:
+        value = record.payload.get("probation_end_date")
+        if value:
+            for identity in record.destination_ids:
+                legacy_ends[identity] = date.fromisoformat(value)
+    return employee_alerts(employees, datetime.now(ZoneInfo("Africa/Nairobi")).date(), legacy_ends)
+
+
 @router.get("/{employee_id}", response_model=EmployeeRead, dependencies=[Depends(require_employee_access('people'))])
 async def get_employee(
     employee_id: uuid.UUID,

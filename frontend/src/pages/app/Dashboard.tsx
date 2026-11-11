@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useWorkspace } from "../../context/WorkspaceContext";
 import { api } from "../../api";
 import { IconPlus } from "../../components/icons";
+import { EmployeeAlerts } from "../../components/EmployeeAlerts";
 import type { Employee } from "../../types";
 import { Card, EmptyState, Kpi, KpiRowSkeleton, PersonCell, StatusPill } from "../../ui";
 
@@ -95,6 +96,8 @@ export default function Dashboard() {
             <Kpi label="Employees" value={employeeCount} hint={company ? company.name : "Select a company"} />
             <Kpi label="Pending approvals" value={0} hint="Leave and payroll" />
           </div>
+
+          <EmployeeAlerts />
 
           <div className="grid-2">
             <Card

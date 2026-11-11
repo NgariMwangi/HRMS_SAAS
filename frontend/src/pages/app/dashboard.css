@@ -1,0 +1,31 @@
+.dashboard-page { display: flex; flex-direction: column; gap: 20px; }
+.dashboard-page .page-head { margin-bottom: 0; }
+.dashboard-toolbar { display: flex; flex-wrap: wrap; align-items: end; gap: 16px; padding: 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.dashboard-toolbar label { display: grid; gap: 6px; min-width: 190px; font-size: .85rem; font-weight: 600; }
+.dashboard-toolbar p { flex: 1; margin: 0 0 8px; font-size: .85rem; }
+.dashboard-page .kpis { margin: 0; }
+.dashboard-page .card { margin: 0; }
+.dashboard-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start; }
+.dashboard-columns > .card { min-width: 0; }
+.dashboard-scroll { max-height: 360px; overflow-y: auto; }
+.dashboard-person { display: grid; gap: 3px; }
+.dashboard-person .muted, .dashboard-scroll .muted { font-size: .82rem; }
+.dashboard-page .dash-row { gap: 14px; align-items: center; }
+.dashboard-page .dash-row > div { min-width: 0; overflow-wrap: anywhere; }
+.dashboard-page .dash-row .pill { white-space: normal; text-align: center; }
+.dashboard-approvals { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; padding: 18px; }
+.dashboard-approval { display: flex; flex-direction: column; gap: 8px; align-items: start; padding: 16px; border: 1px solid var(--line); border-radius: 10px; }
+.dashboard-approval > strong { font-size: 1.85rem; line-height: 1.1; }
+.dashboard-approval > span { font-size: .85rem; }
+.dashboard-note { padding: 0 18px 16px; margin: 0; }
+.dashboard-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.dashboard-payroll { overflow-x: auto; }
+.dashboard-payroll table { min-width: 760px; }
+.dashboard-payroll td:nth-child(n+3) { white-space: nowrap; font-variant-numeric: tabular-nums; }
+@media (max-width: 900px) { .dashboard-columns { grid-template-columns: 1fr; } }
+@media (max-width: 600px) {
+  .dashboard-toolbar { align-items: stretch; }
+  .dashboard-toolbar label { min-width: 0; width: 100%; }
+  .dashboard-approvals { grid-template-columns: 1fr; }
+  .dashboard-page .dash-row { flex-wrap: wrap; }
+}

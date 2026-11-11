@@ -1,153 +1,123 @@
-import { useEffect, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useWorkspace } from "../../context/WorkspaceContext";
 import { api } from "../../api";
-import { IconPlus } from "../../components/icons";
-import { EmployeeAlerts } from "../../components/EmployeeAlerts";
-import type { Employee } from "../../types";
-import { Card, EmptyState, Kpi, KpiRowSkeleton, PersonCell, StatusPill } from "../../ui";
+import { Card, EmptyState, Kpi, KpiRowSkeleton, StatusPill } from "../../ui";
+import "./dashboard.css";
 
-function DashListSkeleton({ rows = 4 }: { rows?: number }) {
-  return (
-    <ul className="dash-list" aria-hidden="true">
-      {Array.from({ length: rows }, (_, index) => (
-        <li key={index} className="dash-row">
-          <div className="person">
-            <span className="skel skel-avatar" style={{ width: 36, height: 36 }} />
-            <div>
-              <span className="skel" style={{ width: index % 2 ? 132 : 168, height: 12 }} />
-              <span className="skel" style={{ width: 72, height: 10, marginTop: 8 }} />
-            </div>
-          </div>
-          <span className="skel skel-pill" style={{ width: 58, height: 22 }} />
-        </li>
-      ))}
-    </ul>
-  );
-}
+type Person = { employee_id: string; name: string; company_id: string; company: string; branch: string };
+type Alert = Person & { date: string; days: number };
+type Run = { id: string; company_id: string; branch_id: string; company: string; branch: string; currency: string; status: string; employees: number; gross: string; deductions: string; net: string };
+type Summary = {
+  as_of: string; month: string; scope: string; companies: number; branches: number; employees: number | null;
+  pending: { leave: number | null; payroll: number | null; overtime: number | null };
+  on_leave: (Person & { leave_type: string; end_on: string; return_on: string | null; portion: string | null })[] | null;
+  alerts: { birthdays: Alert[]; probation: Alert[] } | null;
+  contracts: Alert[] | null;
+  missing: (Person & { missing: string[] })[] | null;
+  payroll: Run[] | null;
+  activity: { at: string; title: string; company_id: string; company: string; href: string }[];
+};
 
-function greeting(name: string): string {
-  const hour = new Date().getHours();
-  const first = name.split(" ")[0];
-  if (hour < 12) return `Good morning, ${first}`;
-  if (hour < 17) return `Good afternoon, ${first}`;
-  return `Good evening, ${first}`;
+const dateLabel = (value: string) => new Date(`${value}T12:00:00`).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+const timing = (days: number) => days === 0 ? "Today" : days === 1 ? "Tomorrow" : days < 0 ? `${Math.abs(days)} days overdue` : `In ${days} days`;
+const money = (value: string, currency: string) => `${currency} ${Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+function List({ children, empty, count }: { children: ReactNode; empty: string; count: number }) {
+  return count ? <ul className="dash-list dashboard-scroll">{children}</ul> : <EmptyState title={empty} note="For the selected view." />;
 }
 
 export default function Dashboard() {
-  const { token, user, company, branch, companies, allBranches, hasPermission } = useWorkspace();
-  const [employeeCount, setEmployeeCount] = useState(0);
+  const { token, user, company, companies, setCompanyId, setBranchId, hasPermission } = useWorkspace();
+  const [all, setAll] = useState(false);
+  const [month, setMonth] = useState(() => { const now = new Date(); return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`; });
+  const [data, setData] = useState<Summary | null>(null);
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [retry, setRetry] = useState(0);
+  const canAll = user.role === "OWNER" && companies.length > 1;
+  const workspace = all && canAll;
   useEffect(() => {
-    if (!company) {
-      setEmployeeCount(0);
-      setLoading(false);
-      return;
-    }
+    let active = true;
+    setData(null); setError("");
+    if (!company) { setLoading(false); return; }
     setLoading(true);
-    api<Employee[]>(`/employees?company_id=${company.id}`, { token })
-      .then((rows) => setEmployeeCount(rows.length))
-      .catch(() => setEmployeeCount(0))
-      .finally(() => setLoading(false));
-  }, [company?.id, token]);
+    const query = new URLSearchParams({ month });
+    if (!workspace) query.set("company_id", company.id);
+    api<Summary>(`/employees/dashboard?${query}`, { token })
+      .then(result => { if (active) setData(result); })
+      .catch((err: Error) => { if (active) setError(err.message); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [company?.id, token, workspace, month, retry]);
 
-  const today = new Date().toLocaleDateString(undefined, {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
+  function contextLink(companyId: string, branchId?: string) { if (companyId !== company?.id) setCompanyId(companyId); if (branchId) setBranchId(branchId); }
+  const person = (row: Person) => <div className="dashboard-person"><Link to={hasPermission("people.view_all") || hasPermission("people.manage") || hasPermission("people.view_team") ? `/app/people/${row.employee_id}` : "/app/leave"} onClick={() => contextLink(row.company_id)}><strong>{row.name}</strong></Link><span className="muted">{[workspace ? row.company : "", row.branch].filter(Boolean).join(" · ")}</span></div>;
+  const alertList = (rows: Alert[], empty: string, review = false) => <List count={rows.length} empty={empty}>{rows.map(row => <li className="dash-row" key={row.employee_id}>
+    <div>{person(row)}<span className="muted">{dateLabel(row.date)}{review && row.days <= 0 ? " · Review needed" : ""}</span></div>
+    <span className={`pill ${row.days <= 0 ? "pill-pending" : ""}`}>{timing(row.days)}</span>
+  </li>)}</List>;
+  const approvals = data ? [
+    { label: "Leave requests", count: data.pending.leave, href: "/app/leave", note: "Awaiting your review" },
+    { label: "Payroll runs", count: data.pending.payroll, href: "/app/payroll", note: "Draft runs to review" },
+    { label: "Overtime requests", count: data.pending.overtime, href: "/app/payroll/overtime", note: "Pending approval" },
+  ].filter(row => row.count !== null) : [];
+  const pendingCount = approvals.reduce((sum, row) => sum + (row.count ?? 0), 0);
 
-  return (
-    <div className="dash-page">
-      <div className="page-head">
-        <div>
-          <h1>{greeting(user.full_name)}</h1>
-          <p>
-            {today}
-            {company ? ` · ${company.name}` : ""}
-            {branch ? ` · ${branch.name}` : ""}
-          </p>
-        </div>
-        <div className="actions dash-actions">
-          {hasPermission("organization.manage") ? <><Link className="btn ghost small" to="/app/companies">Companies</Link><Link className="btn ghost small" to="/app/branches">Branches</Link></> : null}
-          {hasPermission("people.manage") ? <Link className="btn small" to="/app/people/new"><IconPlus /> Add employee</Link> : null}
-        </div>
-      </div>
-
-      {loading ? (
-        <>
-          <KpiRowSkeleton count={4} className="kpis dash-kpis" />
-          <div className="grid-2">
-            <section className="card">
-              <div className="card-head"><div><h3>Companies</h3></div></div>
-              <DashListSkeleton />
-            </section>
-            <section className="card">
-              <div className="card-head"><div><h3>Branches</h3></div></div>
-              <DashListSkeleton />
-            </section>
-          </div>
-        </>
-      ) : (
-        <>
-          <div className="kpis dash-kpis">
-            <Kpi label="Companies" value={companies.length} hint="In this workspace" />
-            <Kpi label="Branches" value={allBranches.length} hint="In this workspace" />
-            <Kpi label="Employees" value={employeeCount} hint={company ? company.name : "Select a company"} />
-            <Kpi label="Pending approvals" value={0} hint="Leave and payroll" />
-          </div>
-
-          <EmployeeAlerts />
-
-          <div className="grid-2">
-            <Card
-              title="Companies"
-              note={companies.length === 1 ? "1 company" : `${companies.length} companies`}
-              action={hasPermission("organization.manage") ? <Link className="btn ghost small" to="/app/companies">Manage</Link> : null}
-            >
-              {companies.length === 0 ? (
-                <EmptyState title="No companies" note="Your first company is created at signup." />
-              ) : (
-                <ul className="dash-list">
-                  {companies.map((row) => (
-                    <li key={row.id} className={row.id === company?.id ? "dash-row is-current" : "dash-row"}>
-                      <PersonCell
-                        name={row.name}
-                        email={row.legal_name && row.legal_name !== row.name ? row.legal_name : undefined}
-                      />
-                      <StatusPill value={row.status} />
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </Card>
-            <Card
-              title="Branches"
-              note={allBranches.length === 1 ? "1 branch" : `${allBranches.length} branches`}
-              action={hasPermission("organization.manage") ? <Link className="btn ghost small" to="/app/branches">Manage</Link> : null}
-            >
-              {allBranches.length === 0 ? (
-                <EmptyState title="No branches" note="Head office is created at signup." />
-              ) : (
-                <ul className="dash-list">
-                  {allBranches.map((row) => {
-                    const owner = companies.find((item) => item.id === row.company_id);
-                    return (
-                      <li key={row.id} className={row.id === branch?.id ? "dash-row is-current" : "dash-row"}>
-                        <PersonCell
-                          name={row.name}
-                          email={owner?.name}
-                        />
-                        <StatusPill value={row.status} />
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </Card>
-          </div>
-        </>
-      )}
+  return <div className="dash-page dashboard-page">
+    <div className="page-head">
+      <div><h1>{new Date().getHours() < 12 ? "Good morning" : new Date().getHours() < 17 ? "Good afternoon" : "Good evening"}, {user.full_name.split(" ")[0]}</h1>
+        <p>{workspace ? "Your workspace at a glance" : `${company?.name ?? "Workspace"} at a glance`}{data ? ` · ${dateLabel(data.as_of)}` : ""}</p></div>
+      <div className="actions dash-actions">{hasPermission("people.manage") && <Link className="btn small" to="/app/people/new">Add employee</Link>}
+        <button className="btn ghost small" type="button" disabled={loading} onClick={() => setRetry(value => value + 1)}>Refresh</button></div>
     </div>
-  );
+    <div className="dashboard-toolbar">
+      <label>View<select value={workspace ? "all" : company?.id ?? ""} onChange={event => { if (event.target.value === "all") setAll(true); else { setAll(false); setCompanyId(event.target.value); } }}>
+        {canAll && <option value="all">All companies</option>}{companies.map(row => <option key={row.id} value={row.id}>{row.name}</option>)}
+      </select></label>
+      {hasPermission("payroll.manage") && <label>Payroll month<input type="month" value={month} onChange={event => { if (event.target.value) setMonth(event.target.value); }} /></label>}
+      <p className="muted">Alerts and leave use today’s date. Payroll uses the selected month.</p>
+    </div>
+    {loading ? <div aria-busy="true"><KpiRowSkeleton count={4} className="kpis dash-kpis" /><p className="muted" role="status">Loading your dashboard…</p></div>
+      : error ? <section className="card card-pad"><p className="error" role="alert">Could not load the dashboard: {error}</p><button className="btn" onClick={() => setRetry(value => value + 1)}>Try again</button></section>
+        : !data ? <EmptyState title="Select a company to get started" note="Choose a company from your workspace." /> : <>
+          <div className="kpis dash-kpis">
+            <Kpi label="Companies" value={data.companies} hint={workspace ? "In this workspace" : "Selected company"} />
+            <Kpi label="Branches" value={data.branches} hint="In this view" />
+            {data.employees !== null && <Kpi label="Employees" value={data.employees} hint="Active and suspended" />}
+            {approvals.length > 0 && <Kpi label="Pending approvals" value={pendingCount} hint="Across all months" />}
+          </div>
+          {approvals.length > 0 && <Card title="Needs your attention" note="Open requests and payroll runs across all months">
+            <div className="dashboard-approvals">{approvals.map(row => <div className="dashboard-approval" key={row.label}>
+              <span className="muted">{row.label}</span><strong>{row.count}</strong><span>{row.note}</span>
+              {!workspace && <Link className="btn ghost small" to={row.href}>Review</Link>}
+            </div>)}</div>{workspace && <p className="muted dashboard-note">Choose a company above to review its approvals.</p>}
+          </Card>}
+          <div className="dashboard-columns">
+            {data.on_leave !== null && <Card title="Who’s on leave today" note={`${data.on_leave.length} approved ${data.on_leave.length === 1 ? "absence" : "absences"}`}>
+              <List count={data.on_leave.length} empty="Nobody is on approved leave today">{data.on_leave.map(row => <li className="dash-row" key={`${row.employee_id}-${row.end_on}`}>
+                <div>{person(row)}<span className="muted">{row.leave_type} · {row.portion ? `${Number(row.portion) === 0.5 ? "Half" : "Quarter"} day — today` : `Expected back ${row.return_on ? dateLabel(row.return_on) : dateLabel(row.end_on)}`}</span></div>
+                <span className="pill pill-approved">{row.portion ? "Partial day" : "On leave"}</span>
+              </li>)}</List>
+            </Card>}
+            {data.alerts && <Card title="Birthday alerts" note="Today and the next 14 days">{alertList(data.alerts.birthdays, "No birthdays in the next 14 days")}</Card>}
+            {data.alerts && <Card title="Probation reviews" note="Overdue, due today, or ending within 14 days">{alertList(data.alerts.probation, "No probation reviews due or coming up", true)}</Card>}
+            {data.contracts !== null && <Card title="Contract expiry alerts" note="Expired or ending within 60 days">{alertList(data.contracts, "No contracts expiring within 60 days", true)}</Card>}
+          </div>
+          {data.payroll !== null && <Card title="Payroll overview" note={new Date(`${month}-01T12:00:00`).toLocaleDateString(undefined, { month: "long", year: "numeric" })} action={!workspace ? <Link className="btn ghost small" to={`/app/payroll?month=${month}`}>Open payroll</Link> : undefined}>
+            {data.payroll.length === 0 ? <EmptyState title="No payroll runs for this month" note="Choose another month or open payroll to prepare a run." /> : <div className="table-scroll dashboard-payroll"><table><thead><tr><th>Company / Branch</th><th>Status</th><th>Employees</th><th>Gross pay</th><th>Deductions</th><th>Net pay</th></tr></thead><tbody>
+              {data.payroll.map(run => <tr key={run.id}><td><Link to={`/app/payroll?month=${month}`} onClick={() => contextLink(run.company_id, run.branch_id)}><strong>{run.branch}</strong></Link><div className="muted">{run.company}</div></td><td><StatusPill value={run.status} /></td><td>{run.employees}</td><td>{money(run.gross, run.currency)}</td><td>{money(run.deductions, run.currency)}</td><td><strong>{money(run.net, run.currency)}</strong></td></tr>)}
+            </tbody></table></div>}
+          </Card>}
+          <div className="dashboard-columns">
+            {data.missing !== null && <Card title="Missing employee information" note={`${data.missing.length} ${data.missing.length === 1 ? "employee needs" : "employees need"} attention · Current records`}>
+              <List count={data.missing.length} empty="Employee information is complete">{data.missing.map(row => <li className="dash-row" key={row.employee_id}><div>{person(row)}<div className="dashboard-tags">{row.missing.map(label => <span className="pill pill-pending" key={label}>{label}</span>)}</div></div><Link className="btn ghost small" to={`/app/people/${row.employee_id}`} onClick={() => contextLink(row.company_id)}>View</Link></li>)}</List>
+            </Card>}
+            <Card title="Recent activity" note="Latest employee changes, leave decisions, and payroll approvals you can view">
+              <List count={data.activity.length} empty="No recent activity to display">{data.activity.map((row, index) => <li className="dash-row" key={`${row.at}-${index}`}><div><Link to={row.href} onClick={() => contextLink(row.company_id)}><strong>{row.title}</strong></Link><div className="muted">{row.company} · {new Date(row.at.endsWith("Z") || /[+-]\d\d:\d\d$/.test(row.at) ? row.at : `${row.at}Z`).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</div></div></li>)}</List>
+            </Card>
+          </div>
+          {hasPermission("organization.manage") && <div className="actions"><Link className="btn ghost small" to="/app/companies">Manage companies</Link><Link className="btn ghost small" to="/app/branches">Manage branches</Link></div>}
+        </>}
+  </div>;
 }

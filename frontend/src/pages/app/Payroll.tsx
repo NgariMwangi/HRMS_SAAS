@@ -1,6 +1,6 @@
 import PayslipDocument from "../../components/PayslipDocument";
 import { FormEvent, Fragment, useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useWorkspace } from "../../context/WorkspaceContext";
 import { api, apiUrl } from "../../api";
 import type { PayrollRun, Payslip } from "../../types";
@@ -43,7 +43,12 @@ export function PayrollBoard({
   employeeHref,
   hideHeader,
 }: PayrollScope) {
+  const [searchParams] = useSearchParams();
+  const requestedMonth = searchParams.get("month");
   const [month, setMonth] = useState(thisMonth);
+  useEffect(() => {
+    if (requestedMonth && /^\d{4}-(0[1-9]|1[0-2])$/.test(requestedMonth)) setMonth(requestedMonth);
+  }, [requestedMonth]);
   const [runs, setRuns] = useState<PayrollRun[]>([]);
   const [openId, setOpenId] = useState<string | null>(null);
   const [slipId, setSlipId] = useState<string | null>(null);

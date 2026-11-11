@@ -197,6 +197,17 @@ async def list_employees(
     return list(result.all())
 
 
+@router.get("/dashboard")
+async def dashboard(
+    company_id: uuid.UUID | None = None,
+    month: str | None = Query(default=None, pattern=r"^\d{4}-(0[1-9]|1[0-2])$"),
+    session: AsyncSession = Depends(get_tenant_db),
+    user: User = Depends(get_current_user),
+):
+    from app.services.dashboard import dashboard_summary
+    return await dashboard_summary(session, user, company_id, month)
+
+
 @router.get("/alerts", dependencies=[Depends(require_access('people.view_all', 'people.manage'))])
 async def dashboard_alerts(
     company_id: uuid.UUID,

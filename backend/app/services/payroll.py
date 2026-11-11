@@ -430,7 +430,7 @@ def _employee_name(employee: Employee) -> str:
     return " ".join(part for part in (employee.first_name, employee.other_names, employee.last_name) if part)
 
 
-async def create_run(session: AsyncSession, company_id, tenant_id, branch_id, period_start: date, period_end: date) -> tuple[PayrollRun, int]:
+async def create_run(session: AsyncSession, company_id, tenant_id, branch_id, period_start: date, period_end: date, excluded_employee_ids=None) -> tuple[PayrollRun, int]:
     await company_for_tenant(session, company_id, tenant_id)
     branch = await branch_for_company(session, branch_id, company_id)
     if period_end < period_start:
@@ -446,6 +446,15 @@ async def create_run(session: AsyncSession, company_id, tenant_id, branch_id, pe
     )
     if existing is not None and existing.status != "DRAFT":
         raise _bad("This period is already approved", status.HTTP_409_CONFLICT)
+    exclusions = sorted({str(identity) for identity in (
+        excluded_employee_ids if excluded_employee_ids is not None else
+        (existing.excluded_employee_ids if existing is not None else []))})
+    if exclusions:
+        owned = set(str(identity) for identity in (await session.scalars(select(Employee.id).where(
+            Employee.company_id == company_id, Employee.branch_id == branch_id,
+            Employee.id.in_(exclusions)))).all())
+        if owned != set(exclusions):
+            raise _bad("Excluded employees must belong to the selected company and branch")
     packs = await list_packs(session, branch.country_id)
     pack = pack_as_of(packs, period_end)
     if pack is None:
@@ -469,6 +478,8 @@ async def create_run(session: AsyncSession, company_id, tenant_id, branch_id, pe
             )
         ).all()
     )
+    excluded_set = set(exclusions)
+    people = [person for person in people if str(person.id) not in excluded_set]
     if existing is not None:
         for slip in list(existing.payslips):
             await session.delete(slip)
@@ -489,6 +500,7 @@ async def create_run(session: AsyncSession, company_id, tenant_id, branch_id, pe
         )
         session.add(run)
         await session.flush()
+    run.excluded_employee_ids = exclusions
     skipped = 0
     gross_total = Decimal("0")
     deduction_total = Decimal("0")
@@ -583,6 +595,7 @@ async def run_to_read(session: AsyncSession, run: PayrollRun, skipped: int = 0) 
         "employer_total": run.employer_total,
         "net_total": run.net_total,
         "skipped": skipped,
+        "excluded_employee_ids": run.excluded_employee_ids,
         "created_at": run.created_at,
         "updated_at": run.updated_at,
         "payslips": run.payslips,

@@ -5,7 +5,7 @@ import "../payslip.css";
 
 type Line = { id: string; name: string; amount: string };
 type Document = { id: string; reference: string; filename: string; employee_name: string; employee_number: string;
-  pin_number?: string | null; shif_no?: string | null; nssf_no?: string | null;
+  employee_primary_email?: string | null; pin_number?: string | null; shif_no?: string | null; nssf_no?: string | null;
   company_name: string; company_legal_name: string | null; company_email: string | null; company_phone: string | null;
   branch_name: string; period_start: string; period_end: string; status: string; currency_code: string; decimal_places: number;
   gross: string; employee_deductions: string; employer_contributions: string; net: string; taxable: string | null;
@@ -29,6 +29,16 @@ function readDocument(value: unknown): Document {
 export default function PayslipDocument({ path, token }: { path: string; token: string }) {
   const [data, setData] = useState<Document | null>(null); const [error, setError] = useState(""); const [downloading, setDownloading] = useState(false); const [revision, setRevision] = useState(0);
   useEffect(() => { let active = true; setData(null); setError(""); api<unknown>(path, { token }).then(readDocument).then(result => { if (active) setData(result); }).catch((e: Error) => { if (active) setError(e.message); }); return () => { active = false; }; }, [path, token, revision]);
+  const [sending, setSending] = useState(false);
+  const [emailNotice, setEmailNotice] = useState("");
+  async function sendEmail() {
+    if (!data || sending) return;
+    setSending(true); setError(""); setEmailNotice("");
+    try {
+      const result = await api<{ recipient: string; message: string }>(`${path}/email`, { token, method: "POST" });
+      setEmailNotice(`Payslip submitted for delivery to ${result.recipient}.`);
+    } catch (e) { setError((e as Error).message); } finally { setSending(false); }
+  }
   async function download() {
     if (!data) return;
     setDownloading(true); setError("");
@@ -47,6 +57,11 @@ export default function PayslipDocument({ path, token }: { path: string; token: 
   return <section className="payslip-preview" aria-label="Payslip preview">
     <div className="payslip-tools"><div><h3>Payslip</h3><p>View your statement or download a PDF copy.</p></div><button className="btn" type="button" disabled={!data || downloading} onClick={() => void download()}>{downloading ? "Preparing PDF…" : "↓ Download PDF"}</button></div>
     {error && <div className="payslip-error" role="alert"><p>{error}</p>{!data && <button type="button" className="btn ghost small" onClick={() => setRevision(v => v + 1)}>Try again</button>}</div>}
+    {data && <div className="payslip-email-tools">
+      <button className="btn ghost" type="button" disabled={sending || data.status !== "APPROVED" || !data.employee_primary_email} onClick={() => void sendEmail()}>{sending ? "Sending..." : path.startsWith("/employee-portal/") ? "Email my payslip" : "Send to employee"}</button>
+      <small>{data.status !== "APPROVED" ? "Approve payroll before sending." : data.employee_primary_email ? `Work email: ${data.employee_primary_email}` : "Add the employee's work email to enable sending."}</small>
+      {emailNotice && <p role="status">{emailNotice}</p>}
+    </div>}
     {!data ? !error && <TableSkeleton rows={6} /> : <article className="payslip-paper">
       <header className="payslip-heading"><div className="payslip-brand"><span className="payslip-monogram" aria-hidden="true">{data.company_name.split(/\s+/).filter(Boolean).slice(0, 2).map(word => word[0]).join("")}</span><div><h2>{data.company_name}</h2>{data.company_legal_name && data.company_legal_name !== data.company_name && <p>{data.company_legal_name}</p>}<p>{[data.company_email, data.company_phone].filter(Boolean).join(" · ")}</p></div></div><div className="payslip-title"><span>PAYSLIP</span><small>{data.reference}</small></div></header>
       {data.status !== "APPROVED" && <p className="payslip-draft">DRAFT — Not approved. For internal review only.</p>}

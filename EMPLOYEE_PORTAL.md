@@ -1,6 +1,6 @@
 # Employee portal
 
-Shared company sign-in: `/`. Existing `/employee/login` links redirect to this same page. After password sign-in, employee-role users go to `/employee`; owners, administrators, HR and managers go to `/app`. Employee-linked management users still enter the management workspace and can open their personal portal from the user menu. Employee Google sign-in is available on the shared page. Platform administrators retain the separate `/admin/login` page.
+Shared company sign-in: `/`. Existing `/employee/login` links redirect to this same page. After password sign-in, employee-role users go to `/employee`; owners, administrators, HR and managers go to `/app`. Employee-linked management users still enter the management workspace and can open their personal portal from the user menu. Google sign-in is temporarily hidden on the shared page; email and password remain available. Platform administrators retain the separate `/admin/login` page.
 
 The portal provides an overview with live personal counts and clock-in/out, contact and emergency-contact editing, employment history, attendance history, leave requests and balances, public holidays, approved payslips with Print / Save PDF, document previews/downloads, performance goals and assessments, notifications, password changes, and Google account linking/disconnection. Layouts support mobile and the existing light/dark theme.
 

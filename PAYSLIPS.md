@@ -1,5 +1,21 @@
 # Payslip PDF downloads
 
+## Email through Brevo
+
+Approved payslips have a **Send to employee** button in payroll and **Email my payslip** in the employee portal. The PDF is sent only to the employee record's `Work email` field (`Employee.email`), never the login email or personal-email fallback. Add a work email to enable the button. Draft payslips cannot be emailed. Payroll managers and platform administrators retain their existing access boundaries; employees can send only their own approved payslips.
+
+Set these server-side environment variables (never frontend/Vite variables):
+
+```dotenv
+BREVO_API_KEY=your-new-api-key
+BREVO_SENDER_EMAIL=info@nexgenfuelworks.com
+BREVO_SENDER_NAME=HRMS
+```
+
+Verify the sender/domain and enable transactional sending in Brevo. Restart the local backend after updating `.env`; for Docker, rebuild/recreate the backend so Compose passes the new settings. Rebuild the frontend to show the button. No database migration is needed for this feature.
+
+The success message confirms Brevo accepted the message for delivery; final delivery is visible in Brevo's transactional logs. Network timeouts are not retried automatically because Brevo may already have accepted the message. Check those logs before manually retrying an uncertain submission.
+
 Employees open **Employee portal > Payslips**, choose a pay period, then select **Download PDF**. Only their own approved payslips are available.
 
 Payroll managers open a payroll run and select **View / download payslip** beside an employee. Platform administrators can use the same action inside a tenant's payroll. Unapproved statements display a draft warning, including a watermark in the PDF.

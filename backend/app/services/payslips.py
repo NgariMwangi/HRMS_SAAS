@@ -46,6 +46,7 @@ async def document(session, identity, tenant_id, employee=None):
         employee_number=slip.employee_number, company_name=company.name, company_legal_name=company.legal_name,
         pin_number=record.pin_number if record else None, shif_no=record.shif_no if record else None,
         nssf_no=record.nssf_no if record else None,
+        employee_primary_email=record.email if record else None,
         company_email=company.email, company_phone=company.phone, branch_name=branch.name,
         period_start=run.period_start.isoformat(), period_end=run.period_end.isoformat(), status=run.status,
         currency_code=currency.code, decimal_places=currency.decimal_places,

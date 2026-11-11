@@ -340,6 +340,7 @@ class PayrollRunCreate(BaseModel):
     branch_id: uuid.UUID
     period_start: date
     period_end: date
+    excluded_employee_ids: list[uuid.UUID] | None = Field(default=None, max_length=10000)
 
 
 class PayslipLineRead(PayrollMoneyModel):
@@ -379,6 +380,7 @@ class PayrollRunRead(PayrollMoneyModel):
     branch_id: uuid.UUID
     period_start: date
     period_end: date
+    excluded_employee_ids: list[uuid.UUID] = Field(default_factory=list)
     status: str
     payroll_pack_id: uuid.UUID
     pack_version: int | None = None

@@ -40,6 +40,9 @@ services:
       HRMS_CENTRAL_HOSTS: ${HRMS_CENTRAL_HOSTS:-localhost,127.0.0.1,::1,test,backend}
       DOMAIN_TLS_SECRET: ${DOMAIN_TLS_SECRET:-}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      BREVO_API_KEY: ${BREVO_API_KEY:-}
+      BREVO_SENDER_EMAIL: ${BREVO_SENDER_EMAIL:-}
+      BREVO_SENDER_NAME: ${BREVO_SENDER_NAME:-HRMS}
       GOOGLE_COOKIE_SECURE: ${GOOGLE_COOKIE_SECURE:-false}
       DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://hrms:hrms@postgres:5432/hrms}
       REDIS_URL: redis://redis:6379/0

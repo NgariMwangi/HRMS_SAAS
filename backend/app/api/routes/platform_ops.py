@@ -1,4 +1,5 @@
 import uuid
+from app.api.routes.payroll import payroll_people
 from datetime import date
 from decimal import Decimal
 
@@ -754,6 +755,12 @@ async def remove_employee_benefit(
     await delete_benefit(session, employee, benefit_id)
 
 
+@router.get("/payroll/employees")
+async def payroll_employees(tenant_id: uuid.UUID, company_id: uuid.UUID, branch_id: uuid.UUID,
+    session: AsyncSession = Depends(get_platform_db), _: object = Depends(get_current_admin)):
+    return await payroll_people(session, company_id, tenant_id, branch_id)
+
+
 @router.get("/payroll/runs", response_model=list[PayrollRunRead])
 async def list_payroll_runs(
     tenant_id: uuid.UUID,
@@ -786,7 +793,7 @@ async def post_payroll_run(
 ) -> dict:
     await company_for_tenant(session, payload.company_id, tenant_id)
     run, skipped = await create_run(
-        session, payload.company_id, tenant_id, payload.branch_id, payload.period_start, payload.period_end
+        session, payload.company_id, tenant_id, payload.branch_id, payload.period_start, payload.period_end, payload.excluded_employee_ids
     )
     loaded = await load_run(session, run.id)
     assert loaded is not None

@@ -1,6 +1,7 @@
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import SecretStr
 
 
 class Settings(BaseSettings):
@@ -10,6 +11,9 @@ class Settings(BaseSettings):
     domain_tls_secret: str = ""
     google_client_id: str = ""
     google_cookie_secure: bool = False
+    brevo_api_key: SecretStr = SecretStr("")
+    brevo_sender_email: str = ""
+    brevo_sender_name: str = "HRMS"
     model_config = SettingsConfigDict(
         env_file=(".env", "../.env"),
         env_file_encoding="utf-8",

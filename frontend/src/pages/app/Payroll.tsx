@@ -1,5 +1,5 @@
 import PayslipDocument from "../../components/PayslipDocument";
-import { FormEvent, Fragment, useEffect, useMemo, useState } from "react";
+import { FormEvent, Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useWorkspace } from "../../context/WorkspaceContext";
 import { api, apiUrl } from "../../api";
@@ -49,6 +49,10 @@ export function PayrollBoard({
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  type Person = { id: string; name: string; employee_number: string };
+  const [review, setReview] = useState<{ start: string; end: string; people: Person[]; excluded: string[] } | null>(null);
+  const [peopleQuery, setPeopleQuery] = useState("");
+  const reviewRequest = useRef(0);
 
   async function load() {
     if (!company || !branch) {
@@ -73,6 +77,9 @@ export function PayrollBoard({
   }
 
   useEffect(() => {
+    reviewRequest.current += 1;
+    setReview(null);
+    setBusy(false);
     load().catch(() => undefined);
   }, [company?.id, branch?.id, token, apiBase]);
 
@@ -86,7 +93,21 @@ export function PayrollBoard({
   const selectedApproved = selectedRun?.status === "APPROVED";
   const selectedDraft = selectedRun?.status === "DRAFT";
 
-  async function postPeriod(periodStart: string, periodEnd: string) {
+  async function preparePeriod(start: string, end: string) {
+    if (!company || !branch || !canManageHr) return;
+    const request = ++reviewRequest.current;
+    setBusy(true); setError(null); setReview(null); setPeopleQuery("");
+    try {
+      const people = await api<Person[]>(apiUrl(apiBase, `/payroll/employees?company_id=${company.id}&branch_id=${branch.id}`), { token });
+      if (request !== reviewRequest.current) return;
+      const existing = runs.find(run => run.period_start === start && run.period_end === end);
+      setReview({ start, end, people, excluded: existing?.excluded_employee_ids ?? [] });
+    } catch (err) {
+      if (request === reviewRequest.current) setError(err instanceof Error ? err.message : "Could not load employees");
+    } finally { if (request === reviewRequest.current) setBusy(false); }
+  }
+
+  async function postPeriod(periodStart: string, periodEnd: string, exclusions: string[]) {
     if (!company || !branch || !canManageHr) return;
     setBusy(true);
     try {
@@ -98,11 +119,13 @@ export function PayrollBoard({
           branch_id: branch.id,
           period_start: periodStart,
           period_end: periodEnd,
+          excluded_employee_ids: exclusions,
         }),
       });
       setRuns((current) => [created, ...current.filter((row) => row.id !== created.id)]);
       setOpenId(created.id);
       setSlipId(null);
+      setReview(null);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not run payroll");
@@ -113,7 +136,7 @@ export function PayrollBoard({
 
   async function createRun(event: FormEvent) {
     event.preventDefault();
-    await postPeriod(selectedBounds.start, selectedBounds.end);
+    await preparePeriod(selectedBounds.start, selectedBounds.end);
   }
 
   async function approve(run: PayrollRun) {
@@ -154,13 +177,31 @@ export function PayrollBoard({
             <form className="filters" onSubmit={createRun}>
               <label>
                 Period
-                <input type="month" value={month} onChange={(event) => setMonth(event.target.value)} />
+                <input type="month" value={month} disabled={busy} onChange={(event) => { setMonth(event.target.value); setReview(null); }} />
               </label>
               <button className="btn small" type="submit" disabled={busy || selectedApproved}>
                 {busy ? "Running…" : selectedApproved ? "Already approved" : selectedDraft ? "Rerun payroll" : "Run payroll"}
               </button>
             </form>
           ) : null}
+          {canManageHr && review && <section className="card card-pad" aria-label="Review payroll employees">
+            <h3>Review employees · {formatDate(review.start)} – {formatDate(review.end)}</h3>
+            <p>Tick employees to exclude from this payroll run only. Unticked active employees with a salary will be paid.</p>
+            <p><strong>{review.excluded.length} excluded</strong></p>
+            <label>Find employee<input type="search" value={peopleQuery} onChange={event => setPeopleQuery(event.target.value)} placeholder="Name or employee number" /></label>
+            <div style={{ maxHeight: 320, overflowY: "auto", margin: "16px 0" }}>
+              {review.people.filter(person => `${person.name} ${person.employee_number}`.toLowerCase().includes(peopleQuery.toLowerCase())).map(person => <label key={person.id} style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 12, padding: "8px 0" }}>
+                <input style={{ width: "auto" }} type="checkbox" disabled={busy} checked={review.excluded.includes(person.id)} onChange={event => { const checked = event.target.checked; setReview(current => current && ({ ...current, excluded: checked ? [...current.excluded, person.id] : current.excluded.filter(id => id !== person.id) })); }} />
+                <span>{person.name} · {person.employee_number}</span>
+              </label>)}
+              {!review.people.length && <p>No active employees in this branch.</p>}
+            </div>
+            <div className="row-actions">
+              <button className="btn ghost small" disabled={busy} onClick={() => setReview(current => current && ({ ...current, excluded: [] }))}>Clear exclusions</button>
+              <button className="btn ghost small" disabled={busy} onClick={() => setReview(null)}>Cancel</button>
+              <button className="btn small" disabled={busy} onClick={() => void postPeriod(review.start, review.end, review.excluded)}>{busy ? "Calculating..." : runs.some(run => run.period_start === review.start && run.period_end === review.end) ? "Confirm rerun" : "Confirm payroll run"}</button>
+            </div>
+          </section>}
           <div className="kpis">
             <Kpi label="Current period" value={open ? `${formatDate(open.period_start)} – ${formatDate(open.period_end)}` : "—"} hint={open ? open.status.toLowerCase() : "No run yet"} />
             <Kpi label="Gross pay" value={formatMoney(open?.gross_total, open?.currency_code)} />
@@ -196,8 +237,8 @@ export function PayrollBoard({
                           <button className="btn ghost small" type="button" onClick={() => { setOpenId(row.id); setSlipId(null); }}>Payslips</button>
                           {canManageHr && row.status === "DRAFT" ? (
                             <>
-                              <button className="btn ghost small" type="button" disabled={busy} onClick={() => void postPeriod(row.period_start, row.period_end)}>Rerun</button>
-                              <button className="btn small" type="button" disabled={busy} onClick={() => void approve(row)}>Approve</button>
+                              <button className="btn ghost small" type="button" disabled={busy} onClick={() => { setMonth(row.period_start.slice(0, 7)); void preparePeriod(row.period_start, row.period_end); }}>Rerun</button>
+                              <button className="btn small" type="button" disabled={busy || !!review} onClick={() => void approve(row)}>Approve</button>
                             </>
                           ) : null}
                         </td>
@@ -208,6 +249,7 @@ export function PayrollBoard({
                 {open ? (
                   <div className="card-pad">
                     <h3 style={{ marginTop: 0 }}>Payslips · {open.country_code} pack v{open.pack_version}</h3>
+                    {!!open.excluded_employee_ids?.length && <p className="muted">{open.excluded_employee_ids.length} employees excluded from this run.</p>}
                     {open.skipped ? <p className="muted">{open.skipped} people skipped because they have no salary.</p> : null}
                     <table className="org-table">
                       <thead>

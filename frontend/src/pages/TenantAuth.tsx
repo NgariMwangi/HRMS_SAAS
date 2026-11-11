@@ -5,7 +5,6 @@ import { api, tenantSession, tenantToken } from "../api";
 import type { Country, Employee, TenantAuth } from "../types";
 import { Skel } from "../ui";
 import AuthLayout from "./AuthLayout";
-import GoogleSignIn from "../components/GoogleSignIn";
 
 const empty = {
   owner_full_name: "",
@@ -152,18 +151,7 @@ export default function TenantAuth() {
             {submitting ? "Please wait…" : mode === "register" ? "Create workspace" : "Continue"}
           </button>
         </form>
-        {mode === "login" && <>
-          <div className="portal-divider">or continue with Google</div>
-          <GoogleSignIn disabled={submitting} onCredential={async credential => {
-            setSubmitting(true); setError(null);
-            try {
-              await complete(await api<TenantAuth>("/auth/google/login", { method: "POST", credentials: "include",
-                body: JSON.stringify({ credential, ...(form.email && form.password ? { email: form.email, password: form.password } : {}) }) }));
-            } finally { setSubmitting(false); }
-          }} />
-          <p className="muted">Employees can use a linked Google account. To link it for the first time, enter your company login email and password above, then select Google.</p>
-          <p className="muted">Need an employee account or password reset? Contact your HR administrator.</p>
-        </>}
+        {mode === "login" && <p className="muted">Need an employee account or password reset? Contact your HR administrator.</p>}
       </div>
       {!domainCompany && <Link className="quiet-link" to="/admin/login">Platform admin</Link>}
     </AuthLayout>

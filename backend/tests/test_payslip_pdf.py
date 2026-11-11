@@ -46,7 +46,7 @@ def test_earnings_reconcile_without_counting_gross_or_taxable_twice(basic):
 
 
 @pytest.mark.usefixtures("clean_tenant_tables")
-async def test_pdf_download_permissions_approval_and_saved_amounts(client):
+async def test_pdf_download_permissions_approval_and_saved_amounts(client, monkeypatch):
     w, owner = await workspace(client)
     a, _, employee = await staff_login(client, owner, w, "PdfEmployee")
     _, _, other_employee = await staff_login(client, owner, w, "PdfOther")
@@ -58,6 +58,7 @@ async def test_pdf_download_permissions_approval_and_saved_amounts(client):
     run = response.json(); slip = run["payslips"][0]
     path = f"/payroll/payslips/{slip['id']}"
     own_path = f"/employee-portal/payslips/{slip['id']}"
+    assert (await client.post(path + "/email", headers=owner)).status_code == 409
     assert (await client.get(own_path + "/pdf", headers=employee)).status_code == 404
     assert (await client.get(path + "/pdf", headers=owner)).status_code == 200
     assert (await client.get(path + "/pdf", headers=employee)).status_code == 403
@@ -67,6 +68,21 @@ async def test_pdf_download_permissions_approval_and_saved_amounts(client):
     assert approved.status_code == 200, approved.text
     detail = await client.get(own_path, headers=employee)
     assert detail.status_code == 200, detail.text
+    updated = await client.patch(f"/employees/{a['id']}", headers=owner, json={"email": "pdf-primary@example.com"})
+    assert updated.status_code == 200, updated.text
+    from app.api.routes import payslips as routes
+    sent = []
+    async def fake_send(document):
+        sent.append(document)
+        return {"recipient": document["employee_primary_email"], "message": "Submitted"}
+    monkeypatch.setattr(routes, "send", fake_send)
+    result = await client.post(path + "/email", headers=owner, json={"recipient": "wrong@example.com"})
+    assert result.status_code == 200 and result.json()["recipient"] == "pdf-primary@example.com"
+    assert (await client.post(path + "/email", headers=foreign_owner)).status_code == 404
+    assert (await client.post(path + "/email", headers=employee)).status_code == 403
+    assert (await client.post(own_path + "/email", headers=other_employee)).status_code == 404
+    assert (await client.post(own_path + "/email", headers=employee)).status_code == 200
+    assert len(sent) == 2
     data = detail.json()
     assert data["employee_name"] == slip["employee_name"] and data["net"] == slip["net"]
     assert Decimal(data["gross"]) == sum(Decimal(r["amount"]) for r in data["earnings"])

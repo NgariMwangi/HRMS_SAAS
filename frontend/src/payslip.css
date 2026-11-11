@@ -30,9 +30,11 @@
 .payslip-amounts th, .payslip-amounts td { background: transparent; color: #152b3c; padding: 11px 12px; font-size: 12px; border: 0; overflow-wrap: anywhere; }
 .payslip-amounts thead th { background: #f3f7f9; color: #627382; font-size: 10px; font-weight: 550; text-transform: uppercase; border-bottom: 1px solid #dce5eb; }
 .payslip-amounts thead th:first-child { text-align: left; width: 70%; }
-.payslip-amounts tbody td { border-bottom: 1px solid #edf1f4; }
+/* The payroll table's hovered parent row also matches cells in this nested
+   table. Keep the document's own colours above the app's dark hover styles. */
+.payslip-paper .payslip-amounts tbody tr > td { background: #fff; color: #152b3c; border-bottom: 1px solid #edf1f4; }
 .payslip-amounts th:last-child, .payslip-amounts td:last-child { text-align: right; font-variant-numeric: tabular-nums; }
-.payslip-amounts tfoot th, .payslip-amounts tfoot td { background: #f3f7f9; border-top: 1px solid #dce5eb; font-weight: 700; }
+.payslip-paper .payslip-amounts tfoot th, .payslip-paper .payslip-amounts tfoot td { background: #f3f7f9; color: #152b3c; border-top: 1px solid #dce5eb; font-weight: 700; }
 .payslip-amounts tfoot th { text-align: left; }
 .payslip-net { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 23px 22px; background: #152b3c; color: #fff; border-radius: 5px; margin-top: 25px; }
 .payslip-net > div > span { display: block; font-weight: 700; font-size: 12px; letter-spacing: .08em; }
@@ -47,3 +49,6 @@
 .payslip-footer { border-top: 1px solid #dce5eb; margin-top: 30px; padding-top: 15px; display: flex; justify-content: space-between; gap: 10px; font-size: 9px; color: #627382; }
 .payslip-error { margin-bottom: 16px; padding: 12px; color: #b42318; border: 1px solid #edb7b7; border-radius: 5px; }
 @media (max-width: 650px) { .payslip-paper { padding: 24px 16px 18px; } .payslip-heading { flex-direction: column; gap: 14px; } .payslip-title { text-align: left; } .payslip-title > span { font-size: 21px; } .payslip-brand h2 { font-size: 19px; } .payslip-details { padding: 16px; gap: 16px; grid-template-columns: 1fr 1fr; } .payslip-net { align-items: flex-start; flex-direction: column; gap: 10px; padding: 18px; } .payslip-net strong { font-size: 20px; align-self: flex-end; } .payslip-footer { flex-wrap: wrap; } }
+
+.payslip-email-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 18px; }
+.payslip-email-tools p { flex-basis: 100%; margin: 0; }

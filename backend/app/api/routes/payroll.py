@@ -108,6 +108,21 @@ async def patch_employee_compensation(
     return await update_compensation(session, employee, compensation_id, payload)
 
 
+async def payroll_people(session, company_id, tenant_id, branch_id):
+    await company_for_tenant(session, company_id, tenant_id)
+    await branch_for_company(session, branch_id, company_id)
+    rows = (await session.scalars(select(Employee).where(Employee.company_id == company_id,
+        Employee.branch_id == branch_id, Employee.status == "ACTIVE").order_by(Employee.last_name, Employee.first_name))).all()
+    return [{"id": row.id, "name": " ".join(filter(None, [row.first_name, row.other_names, row.last_name])),
+        "employee_number": row.employee_number} for row in rows]
+
+
+@router.get("/payroll/employees", dependencies=[Depends(require_access('payroll.manage'))])
+async def payroll_employees(company_id: uuid.UUID, branch_id: uuid.UUID,
+    tenant_id: uuid.UUID = Depends(get_tenant_id), session: AsyncSession = Depends(get_tenant_db)):
+    return await payroll_people(session, company_id, tenant_id, branch_id)
+
+
 @router.get("/payroll/runs", response_model=list[PayrollRunRead], dependencies=[Depends(require_access('payroll.manage'))])
 async def list_payroll_runs(
     company_id: uuid.UUID = Query(),
@@ -139,7 +154,7 @@ async def post_payroll_run(
     user: User = Depends(get_current_user),
 ) -> dict:
     run, skipped = await create_run(
-        session, payload.company_id, tenant_id, payload.branch_id, payload.period_start, payload.period_end
+        session, payload.company_id, tenant_id, payload.branch_id, payload.period_start, payload.period_end, payload.excluded_employee_ids
     )
     loaded = await load_run(session, run.id)
     assert loaded is not None

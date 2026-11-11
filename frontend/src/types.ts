@@ -319,6 +319,7 @@ export type Payslip = {
 };
 
 export type PayrollRun = {
+  excluded_employee_ids: string[];
   id: string;
   company_id: string;
   branch_id: string;

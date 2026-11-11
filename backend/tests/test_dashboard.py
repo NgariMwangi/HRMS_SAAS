@@ -92,6 +92,9 @@ async def test_dashboard_payroll_month_totals_and_approval_activity(client):
     assert data["payroll"][0]["currency"] == "KES"
     assert Decimal(data["payroll"][0]["gross"]) == Decimal(payroll["gross_total"])
     assert Decimal(data["payroll"][0]["net"]) == Decimal(payroll["net_total"])
+    latest = (await client.get(path, headers=owner)).json()
+    assert latest["month"] == "2026-04"
+    assert latest["payroll"][0]["id"] == payroll["id"]
     assert (await client.get(path + "&month=2026-05", headers=owner)).json()["payroll"] == []
     assert (await client.post(f"/payroll/runs/{payroll['id']}/approve", headers=owner)).status_code == 200
     data = (await client.get(path + "&month=2026-04", headers=owner)).json()

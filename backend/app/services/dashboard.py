@@ -26,7 +26,6 @@ async def dashboard_summary(session, user, company_id, month):
         period = date.fromisoformat(f"{month}-01") if month else today.replace(day=1)
     except ValueError:
         raise HTTPException(422, "Select a valid payroll month (YYYY-MM)")
-    following = (period.replace(day=28) + timedelta(days=4)).replace(day=1)
     permissions = await permissions_for(session, user)
     people_allowed = bool({"people.manage", "people.view_all"} & permissions)
     leave_allowed = bool({"leave.manage", "leave.view_all", "leave.view_team"} & permissions)
@@ -141,6 +140,11 @@ async def dashboard_summary(session, user, company_id, month):
 
     payroll, pending_payroll, pending_overtime = None, None, None
     if payroll_allowed:
+        if not month:
+            latest_period = await session.scalar(select(func.max(PayrollRun.period_start)).where(PayrollRun.company_id.in_(ids)))
+            if latest_period:
+                period = latest_period.replace(day=1)
+        following = (period.replace(day=28) + timedelta(days=4)).replace(day=1)
         pending_payroll = await session.scalar(select(func.count()).select_from(PayrollRun).where(PayrollRun.company_id.in_(ids), PayrollRun.status == "DRAFT"))
         pending_overtime = await session.scalar(select(func.count()).select_from(OvertimeRequest).where(OvertimeRequest.company_id.in_(ids), OvertimeRequest.status == "PENDING"))
         runs = (await session.execute(select(PayrollRun, Currency.code).join(Currency, Currency.id == PayrollRun.currency_id).where(

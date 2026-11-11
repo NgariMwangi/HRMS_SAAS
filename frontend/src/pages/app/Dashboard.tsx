@@ -30,7 +30,6 @@ function List({ children, empty, count }: { children: ReactNode; empty: string; 
 export default function Dashboard() {
   const { token, user, company, companies, setCompanyId, setBranchId, hasPermission } = useWorkspace();
   const [all, setAll] = useState(false);
-  const [month, setMonth] = useState(() => { const now = new Date(); return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`; });
   const [data, setData] = useState<Summary | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -42,14 +41,14 @@ export default function Dashboard() {
     setData(null); setError("");
     if (!company) { setLoading(false); return; }
     setLoading(true);
-    const query = new URLSearchParams({ month });
+    const query = new URLSearchParams();
     if (!workspace) query.set("company_id", company.id);
     api<Summary>(`/employees/dashboard?${query}`, { token })
       .then(result => { if (active) setData(result); })
       .catch((err: Error) => { if (active) setError(err.message); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [company?.id, token, workspace, month, retry]);
+  }, [company?.id, token, workspace, retry]);
 
   function contextLink(companyId: string, branchId?: string) { if (companyId !== company?.id) setCompanyId(companyId); if (branchId) setBranchId(branchId); }
   const person = (row: Person) => <div className="dashboard-person"><Link to={hasPermission("people.view_all") || hasPermission("people.manage") || hasPermission("people.view_team") ? `/app/people/${row.employee_id}` : "/app/leave"} onClick={() => contextLink(row.company_id)}><strong>{row.name}</strong></Link><span className="muted">{[workspace ? row.company : "", row.branch].filter(Boolean).join(" · ")}</span></div>;
@@ -63,6 +62,7 @@ export default function Dashboard() {
     { label: "Overtime requests", count: data.pending.overtime, href: "/app/payroll/overtime", note: "Pending approval" },
   ].filter(row => row.count !== null) : [];
   const pendingCount = approvals.reduce((sum, row) => sum + (row.count ?? 0), 0);
+  const month = data?.month ?? "";
 
   return <div className="dash-page dashboard-page">
     <div className="page-head">
@@ -75,8 +75,7 @@ export default function Dashboard() {
       <label>View<select value={workspace ? "all" : company?.id ?? ""} onChange={event => { if (event.target.value === "all") setAll(true); else { setAll(false); setCompanyId(event.target.value); } }}>
         {canAll && <option value="all">All companies</option>}{companies.map(row => <option key={row.id} value={row.id}>{row.name}</option>)}
       </select></label>
-      {hasPermission("payroll.manage") && <label>Payroll month<input type="month" value={month} onChange={event => { if (event.target.value) setMonth(event.target.value); }} /></label>}
-      <p className="muted">Alerts and leave use today’s date. Payroll uses the selected month.</p>
+      <p className="muted">Alerts and leave use today’s date. Payroll shows the latest available payroll month.</p>
     </div>
     {loading ? <div aria-busy="true"><KpiRowSkeleton count={4} className="kpis dash-kpis" /><p className="muted" role="status">Loading your dashboard…</p></div>
       : error ? <section className="card card-pad"><p className="error" role="alert">Could not load the dashboard: {error}</p><button className="btn" onClick={() => setRetry(value => value + 1)}>Try again</button></section>
@@ -105,7 +104,7 @@ export default function Dashboard() {
             {data.contracts !== null && <Card title="Contract expiry alerts" note="Expired or ending within 60 days">{alertList(data.contracts, "No contracts expiring within 60 days", true)}</Card>}
           </div>
           {data.payroll !== null && <Card title="Payroll overview" note={new Date(`${month}-01T12:00:00`).toLocaleDateString(undefined, { month: "long", year: "numeric" })} action={!workspace ? <Link className="btn ghost small" to={`/app/payroll?month=${month}`}>Open payroll</Link> : undefined}>
-            {data.payroll.length === 0 ? <EmptyState title="No payroll runs for this month" note="Choose another month or open payroll to prepare a run." /> : <div className="table-scroll dashboard-payroll"><table><thead><tr><th>Company / Branch</th><th>Status</th><th>Employees</th><th>Gross pay</th><th>Deductions</th><th>Net pay</th></tr></thead><tbody>
+            {data.payroll.length === 0 ? <EmptyState title="No payroll has been run yet" note="Open payroll to prepare the first run." /> : <div className="table-scroll dashboard-payroll"><table><thead><tr><th>Company / Branch</th><th>Status</th><th>Employees</th><th>Gross pay</th><th>Deductions</th><th>Net pay</th></tr></thead><tbody>
               {data.payroll.map(run => <tr key={run.id}><td><Link to={`/app/payroll?month=${month}`} onClick={() => contextLink(run.company_id, run.branch_id)}><strong>{run.branch}</strong></Link><div className="muted">{run.company}</div></td><td><StatusPill value={run.status} /></td><td>{run.employees}</td><td>{money(run.gross, run.currency)}</td><td>{money(run.deductions, run.currency)}</td><td><strong>{money(run.net, run.currency)}</strong></td></tr>)}
             </tbody></table></div>}
           </Card>}

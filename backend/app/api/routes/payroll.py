@@ -131,7 +131,7 @@ async def payroll_people(session, company_id, tenant_id, branch_id, period_end=N
         salaries = {pay.employee_id: pay for pay in pay_rows}
     result = []
     for row in rows:
-        reason = payroll_skip_reason(row, salaries.get(row.id)) if period_end is not None else None
+        reason = payroll_skip_reason(row, salaries.get(row.id), period_end) if period_end is not None else None
         result.append({"id": row.id, "name": " ".join(filter(None, [row.first_name, row.other_names, row.last_name])),
             "employee_number": row.employee_number, "status": row.status,
             "eligible": reason is None, "skip_reason": reason})

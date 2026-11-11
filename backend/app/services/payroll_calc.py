@@ -6,6 +6,13 @@ from app.models.payroll import EmployeeCompensation, PayrollPack, PayrollPackCom
 ZERO = Decimal("0")
 
 
+def salary_days(period_start: date, period_end: date, date_joined: date | None) -> int:
+    """Full periods retain monthly pay; new starters accrue inclusive calendar days."""
+    if date_joined is None or date_joined <= period_start:
+        return 30
+    return min(30, max(0, (period_end - date_joined).days + 1))
+
+
 def money(value: Decimal, places: int = 2) -> Decimal:
     quant = Decimal("1").scaleb(-places)
     return Decimal(value).quantize(quant, rounding=ROUND_HALF_UP)
@@ -112,16 +119,21 @@ def calculate_payslip(
     places: int = 2,
     other_deductions: list[dict] | None = None,
     benefits: list[dict] | None = None,
+    payable_days: int = 30,
 ) -> dict:
+    if not 0 <= payable_days <= 30:
+        raise ValueError("payable_days must be between 0 and 30")
+    monthly_basic = compensation_basic(compensation)
+    basic = money(monthly_basic * Decimal(payable_days) / Decimal(30), places)
     benefit_lines = [{**item, "amount": money(Decimal(item["amount"]), places)} for item in benefits or []]
     # Cash benefits (commission, bonus…) are employment income: they raise gross,
     # so PAYE, NSSF, SHIF and housing levy are calculated on them.
     gross = money(
-        compensation_gross(compensation) + sum((item["amount"] for item in benefit_lines), ZERO),
+        compensation_gross(compensation) - monthly_basic + basic
+        + sum((item["amount"] for item in benefit_lines), ZERO),
         places,
     )
     basic_value = compensation.computed_basic
-    basic = money(compensation_basic(compensation), places)
     taxable = gross
     # Kenya NSSF pensionable earnings are monthly pay (gross), not the basic line alone.
     pensionable = gross
@@ -141,7 +153,7 @@ def calculate_payslip(
         lines.append(
             {
                 "code": "BASIC",
-                "name": "Basic pay",
+                "name": "Basic pay" if payable_days == 30 else f"Basic pay ({payable_days}/30 days)",
                 "party": "EMPLOYEE",
                 "kind": "EARNING",
                 "amount": basic,
@@ -159,6 +171,11 @@ def calculate_payslip(
                     "sort_order": index,
                 }
             )
+    elif payable_days != 30:
+        lines.append({
+            "code": "SALARY", "name": f"Salary ({payable_days}/30 days)",
+            "party": "EMPLOYEE", "kind": "EARNING", "amount": basic, "sort_order": 1,
+        })
     for index, item in enumerate(benefit_lines):
         lines.append(
             {

@@ -25,7 +25,7 @@ from app.models import (
 )
 from app.services.benefits import benefits_for_period
 from app.services.deductions import deductions_for_period
-from app.services.payroll_calc import calculate_payslip, money, pack_as_of
+from app.services.payroll_calc import calculate_payslip, money, pack_as_of, salary_days
 
 FREQUENCIES = {"MONTHLY", "BIWEEKLY", "WEEKLY"}
 STRUCTURES = {"GROSS_ONLY", "BASIC_PLUS_ALLOWANCES"}
@@ -430,9 +430,11 @@ def _employee_name(employee: Employee) -> str:
     return " ".join(part for part in (employee.first_name, employee.other_names, employee.last_name) if part)
 
 
-def payroll_skip_reason(employee: Employee, pay: EmployeeCompensation | None) -> str | None:
+def payroll_skip_reason(employee: Employee, pay: EmployeeCompensation | None, period_end: date | None = None) -> str | None:
     if employee.status != "ACTIVE":
         return f"Employee status is {employee.status.lower().replace('_', ' ')}"
+    if period_end is not None and employee.date_joined is not None and employee.date_joined > period_end:
+        return "Joining date is after this pay period"
     if pay is None:
         return "No salary set for this pay period"
     if pay.computed_gross <= 0:
@@ -521,7 +523,7 @@ async def create_run(session: AsyncSession, company_id, tenant_id, branch_id, pe
     earned = await benefits_for_period(session, people_ids, period_start, period_end)
     for person in people:
         pay = await compensation_as_of(session, person.id, period_end)
-        if payroll_skip_reason(person, pay) is not None:
+        if payroll_skip_reason(person, pay, period_end) is not None:
             skipped += 1
             continue
         result = calculate_payslip(
@@ -530,6 +532,7 @@ async def create_run(session: AsyncSession, company_id, tenant_id, branch_id, pe
             places=places,
             other_deductions=scheduled.get(person.id),
             benefits=earned.get(person.id),
+            payable_days=salary_days(period_start, period_end, person.date_joined),
         )
         payslip = PayrollPayslip(
             company_id=company_id,

@@ -1,5 +1,6 @@
 from app.api.access_control import require_access
 import uuid
+from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
@@ -23,6 +24,7 @@ from app.services.payroll import (
     approve_run,
     update_compensation,
     create_run,
+    payroll_skip_reason,
     list_compensation,
     load_run,
     run_to_read,
@@ -108,19 +110,38 @@ async def patch_employee_compensation(
     return await update_compensation(session, employee, compensation_id, payload)
 
 
-async def payroll_people(session, company_id, tenant_id, branch_id):
+async def payroll_people(session, company_id, tenant_id, branch_id, period_end=None):
     await company_for_tenant(session, company_id, tenant_id)
     await branch_for_company(session, branch_id, company_id)
-    rows = (await session.scalars(select(Employee).where(Employee.company_id == company_id,
-        Employee.branch_id == branch_id, Employee.status == "ACTIVE").order_by(Employee.last_name, Employee.first_name))).all()
-    return [{"id": row.id, "name": " ".join(filter(None, [row.first_name, row.other_names, row.last_name])),
-        "employee_number": row.employee_number} for row in rows]
+    query = select(Employee).where(Employee.company_id == company_id, Employee.branch_id == branch_id)
+    if period_end is None:
+        query = query.where(Employee.status == "ACTIVE")
+    rows = (await session.scalars(query.order_by(Employee.last_name, Employee.first_name))).all()
+    salaries = {}
+    if period_end is not None and rows:
+        # Match compensation_as_of, fetching the latest applicable salary and
+        # its allowances for everyone together rather than one query per person.
+        pay_rows = (await session.scalars(select(EmployeeCompensation)
+            .options(selectinload(EmployeeCompensation.lines))
+            .where(EmployeeCompensation.employee_id.in_([row.id for row in rows]),
+                EmployeeCompensation.effective_from <= period_end)
+            .distinct(EmployeeCompensation.employee_id)
+            .order_by(EmployeeCompensation.employee_id, EmployeeCompensation.effective_from.desc()))).all()
+        salaries = {pay.employee_id: pay for pay in pay_rows}
+    result = []
+    for row in rows:
+        reason = payroll_skip_reason(row, salaries.get(row.id)) if period_end is not None else None
+        result.append({"id": row.id, "name": " ".join(filter(None, [row.first_name, row.other_names, row.last_name])),
+            "employee_number": row.employee_number, "status": row.status,
+            "eligible": reason is None, "skip_reason": reason})
+    return result
 
 
 @router.get("/payroll/employees", dependencies=[Depends(require_access('payroll.manage'))])
 async def payroll_employees(company_id: uuid.UUID, branch_id: uuid.UUID,
+    period_end: date | None = None,
     tenant_id: uuid.UUID = Depends(get_tenant_id), session: AsyncSession = Depends(get_tenant_db)):
-    return await payroll_people(session, company_id, tenant_id, branch_id)
+    return await payroll_people(session, company_id, tenant_id, branch_id, period_end)
 
 
 @router.get("/payroll/runs", response_model=list[PayrollRunRead], dependencies=[Depends(require_access('payroll.manage'))])

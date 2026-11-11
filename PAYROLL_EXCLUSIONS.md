@@ -2,6 +2,8 @@
 
 Select a period and click **Run payroll** (or **Rerun** on a draft). A review panel opens before any payroll calculation. Search by name or employee number and tick the employees to exclude, then choose **Confirm payroll run** or **Confirm rerun**. Cancel leaves the run unchanged.
 
+The review shows counts for employees to include, manual exclusions and automatic omissions. Each employee displays their outcome and reason. With the selected period's end date, the backend checks the latest applicable salary: missing/future-only salary, zero or negative salary, and non-active employee status are shown as automatic omissions. Those rows cannot be manually included until the underlying employee/salary record is corrected; reopen the review after correcting it. The actual run rechecks eligibility when calculating payroll.
+
 Exclusions apply only to that company, branch and period. A draft rerun preselects its saved exclusions; untick people or use **Clear exclusions** to include them again. New periods start with no exclusions. Approved runs remain locked. Employee status and salary records are unchanged, and excluded people receive no payslip in that run. Missing-salary skips remain separate from deliberate exclusions.
 
 The same review is available in tenant payroll and platform tenant payroll. Employee choices come from payroll-authorized endpoints, and the backend rejects exclusion IDs outside the selected company/branch.

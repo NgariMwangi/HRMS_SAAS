@@ -430,6 +430,16 @@ def _employee_name(employee: Employee) -> str:
     return " ".join(part for part in (employee.first_name, employee.other_names, employee.last_name) if part)
 
 
+def payroll_skip_reason(employee: Employee, pay: EmployeeCompensation | None) -> str | None:
+    if employee.status != "ACTIVE":
+        return f"Employee status is {employee.status.lower().replace('_', ' ')}"
+    if pay is None:
+        return "No salary set for this pay period"
+    if pay.computed_gross <= 0:
+        return "Salary is zero or less"
+    return None
+
+
 async def create_run(session: AsyncSession, company_id, tenant_id, branch_id, period_start: date, period_end: date, excluded_employee_ids=None) -> tuple[PayrollRun, int]:
     await company_for_tenant(session, company_id, tenant_id)
     branch = await branch_for_company(session, branch_id, company_id)
@@ -511,7 +521,7 @@ async def create_run(session: AsyncSession, company_id, tenant_id, branch_id, pe
     earned = await benefits_for_period(session, people_ids, period_start, period_end)
     for person in people:
         pay = await compensation_as_of(session, person.id, period_end)
-        if pay is None or pay.computed_gross <= 0:
+        if payroll_skip_reason(person, pay) is not None:
             skipped += 1
             continue
         result = calculate_payslip(

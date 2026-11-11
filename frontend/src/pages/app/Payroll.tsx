@@ -49,8 +49,8 @@ export function PayrollBoard({
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  type Person = { id: string; name: string; employee_number: string };
-  const [review, setReview] = useState<{ start: string; end: string; people: Person[]; excluded: string[] } | null>(null);
+  type Person = { id: string; name: string; employee_number: string; eligible: boolean; skip_reason: string | null };
+  const [review, setReview] = useState<{ start: string; end: string; people: Person[]; excluded: string[]; previousExclusions: string[] } | null>(null);
   const [peopleQuery, setPeopleQuery] = useState("");
   const reviewRequest = useRef(0);
 
@@ -98,10 +98,14 @@ export function PayrollBoard({
     const request = ++reviewRequest.current;
     setBusy(true); setError(null); setReview(null); setPeopleQuery("");
     try {
-      const people = await api<Person[]>(apiUrl(apiBase, `/payroll/employees?company_id=${company.id}&branch_id=${branch.id}`), { token });
-      if (request !== reviewRequest.current) return;
       const existing = runs.find(run => run.period_start === start && run.period_end === end);
-      setReview({ start, end, people, excluded: existing?.excluded_employee_ids ?? [] });
+      const [people, savedRun] = await Promise.all([
+        api<Person[]>(apiUrl(apiBase, `/payroll/employees?company_id=${company.id}&branch_id=${branch.id}&period_end=${end}`), { token }),
+        existing ? api<PayrollRun>(apiUrl(apiBase, `/payroll/runs/${existing.id}`), { token }) : Promise.resolve(null),
+      ]);
+      if (request !== reviewRequest.current) return;
+      const exclusions = savedRun?.excluded_employee_ids ?? [];
+      setReview({ start, end, people, excluded: [...exclusions], previousExclusions: [...exclusions] });
     } catch (err) {
       if (request === reviewRequest.current) setError(err instanceof Error ? err.message : "Could not load employees");
     } finally { if (request === reviewRequest.current) setBusy(false); }
@@ -125,7 +129,9 @@ export function PayrollBoard({
       setRuns((current) => [created, ...current.filter((row) => row.id !== created.id)]);
       setOpenId(created.id);
       setSlipId(null);
+      reviewRequest.current += 1;
       setReview(null);
+      setPeopleQuery("");
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not run payroll");
@@ -186,15 +192,16 @@ export function PayrollBoard({
           ) : null}
           {canManageHr && review && <section className="card card-pad" aria-label="Review payroll employees">
             <h3>Review employees · {formatDate(review.start)} – {formatDate(review.end)}</h3>
-            <p>Tick employees to exclude from this payroll run only. Unticked active employees with a salary will be paid.</p>
-            <p><strong>{review.excluded.length} excluded</strong></p>
+            <p>Tick employees to exclude from this payroll run only. Employees without an applicable salary or with an inactive status are automatically left out.</p>
+            {!!review.previousExclusions.length && <p>Previous exclusions are already ticked. Untick an employee to include them in this rerun.</p>}
+            <p><strong>{review.people.filter(person => person.eligible && !review.excluded.includes(person.id)).length} to include</strong> ? {review.people.filter(person => person.eligible && review.excluded.includes(person.id)).length} manually excluded ? {review.people.filter(person => !person.eligible).length} automatically left out</p>
             <label>Find employee<input type="search" value={peopleQuery} onChange={event => setPeopleQuery(event.target.value)} placeholder="Name or employee number" /></label>
             <div style={{ maxHeight: 320, overflowY: "auto", margin: "16px 0" }}>
               {review.people.filter(person => `${person.name} ${person.employee_number}`.toLowerCase().includes(peopleQuery.toLowerCase())).map(person => <label key={person.id} style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 12, padding: "8px 0" }}>
-                <input style={{ width: "auto" }} type="checkbox" disabled={busy} checked={review.excluded.includes(person.id)} onChange={event => { const checked = event.target.checked; setReview(current => current && ({ ...current, excluded: checked ? [...current.excluded, person.id] : current.excluded.filter(id => id !== person.id) })); }} />
-                <span>{person.name} · {person.employee_number}</span>
+                <input style={{ width: "auto" }} type="checkbox" disabled={busy || !person.eligible} checked={!person.eligible || review.excluded.includes(person.id)} onChange={event => { const checked = event.target.checked; setReview(current => current && ({ ...current, excluded: checked ? [...current.excluded, person.id] : current.excluded.filter(id => id !== person.id) })); }} />
+                <span><strong>{person.name}</strong> · {person.employee_number}<small style={{ display: "block" }}>{!person.eligible ? `Not included: ${person.skip_reason}` : review.excluded.includes(person.id) ? review.previousExclusions.includes(person.id) ? "Previously excluded — untick to include" : "Not included: excluded for this run" : "Will be included"}</small></span>
               </label>)}
-              {!review.people.length && <p>No active employees in this branch.</p>}
+              {!review.people.length && <p>No employees in this branch.</p>}
             </div>
             <div className="row-actions">
               <button className="btn ghost small" disabled={busy} onClick={() => setReview(current => current && ({ ...current, excluded: [] }))}>Clear exclusions</button>

@@ -757,8 +757,9 @@ async def remove_employee_benefit(
 
 @router.get("/payroll/employees")
 async def payroll_employees(tenant_id: uuid.UUID, company_id: uuid.UUID, branch_id: uuid.UUID,
+    period_end: date | None = None,
     session: AsyncSession = Depends(get_platform_db), _: object = Depends(get_current_admin)):
-    return await payroll_people(session, company_id, tenant_id, branch_id)
+    return await payroll_people(session, company_id, tenant_id, branch_id, period_end)
 
 
 @router.get("/payroll/runs", response_model=list[PayrollRunRead])

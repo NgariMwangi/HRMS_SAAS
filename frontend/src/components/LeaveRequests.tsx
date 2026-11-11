@@ -49,6 +49,7 @@ export function LeaveRequests({
   const [leaveTypeId, setLeaveTypeId] = useState("");
   const [startOn, setStartOn] = useState("");
   const [endOn, setEndOn] = useState("");
+  const [duration, setDuration] = useState("FULL_DAY");
   const [reason, setReason] = useState("");
   const [supervisors, setSupervisors] = useState<Supervisor[]>([]);
   const [balance, setBalance] = useState<LeaveBalance | null>(null);
@@ -61,7 +62,8 @@ export function LeaveRequests({
     [employees],
   );
   const chosenType = types.find((row) => row.id === leaveTypeId);
-  const days = countLeaveDays(startOn, endOn, chosenType?.day_basis ?? "WORKING");
+  const wholeDays = countLeaveDays(startOn, endOn, chosenType?.day_basis ?? "WORKING");
+  const days = wholeDays ? duration === "HALF_DAY" ? 0.5 : duration === "QUARTER_DAY" ? 0.25 : wholeDays : 0;
 
   async function load() {
     const list = await api<LeaveRequest[]>(apiUrl(apiBase, `/leave-requests?company_id=${companyId}${ownOnly && selfEmployeeId ? `&employee_id=${selfEmployeeId}` : ""}`), { token });
@@ -106,6 +108,7 @@ export function LeaveRequests({
     setLeaveTypeId("");
     setStartOn("");
     setEndOn("");
+    setDuration("FULL_DAY");
     setReason("");
     setError(null);
   }
@@ -131,6 +134,7 @@ export function LeaveRequests({
           leave_type_id: leaveTypeId,
           start_on: startOn,
           end_on: endOn,
+          duration,
           reason: reason.trim() || null,
           hr_action: hrAction,
           approval_mode: hrAction === "SEND_TO_SUPERVISOR" ? "SUPERVISOR_THEN_HR" : "HR_ONLY",
@@ -223,8 +227,9 @@ export function LeaveRequests({
                 ))}
               </select>
             </label>
-            <label>Start<input required type="date" value={startOn} onChange={(event) => setStartOn(event.target.value)} /></label>
-            <label>End<input required type="date" min={startOn || undefined} value={endOn} onChange={(event) => setEndOn(event.target.value)} /></label>
+            <label>Duration<select value={duration} onChange={event => { setDuration(event.target.value); if (event.target.value !== "FULL_DAY") setEndOn(startOn); }}><option value="FULL_DAY">Full day(s)</option><option value="HALF_DAY">Half day (0.5)</option><option value="QUARTER_DAY">Quarter day (0.25)</option></select></label>
+            <label>Start<input required type="date" value={startOn} onChange={(event) => { setStartOn(event.target.value); if (duration !== "FULL_DAY") setEndOn(event.target.value); }} /></label>
+            <label>End<input required type="date" disabled={duration !== "FULL_DAY"} min={startOn || undefined} value={endOn} onChange={(event) => setEndOn(event.target.value)} /></label>
             <label>Days<input readOnly value={days || ""} placeholder="—" /></label>
             <label style={{ gridColumn: "1 / -1" }}>
               Reason
@@ -288,7 +293,7 @@ export function LeaveRequests({
                 </td>
                 <td data-label="Type">{row.leave_type_name}</td>
                 <td data-label="Dates">{formatDate(row.start_on)} – {formatDate(row.end_on)}</td>
-                <td data-label="Days">{Number(row.days)}</td>
+                <td data-label="Days">{Number(row.days) === 0.5 ? "Half day (0.5)" : Number(row.days) === 0.25 ? "Quarter day (0.25)" : Number(row.days)}</td>
                 <td data-label="From">{leaveRequestedAsLabel(row.requested_as)}</td>
                 <td data-label="Status"><StatusPill value={leaveStatusLabel(row.status)} /></td>
                 <td className="row-actions">

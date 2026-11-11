@@ -88,6 +88,7 @@ async def hr_apply_leave(
         payload.end_on,
         payload.reason,
         payload.hr_action,
+        duration=payload.duration,
     )
     return await request_to_read(session, row)
 
@@ -109,6 +110,7 @@ async def employee_apply_leave(
         payload.end_on,
         payload.reason,
         payload.approval_mode,
+        duration=payload.duration,
     )
     return await request_to_read(session, row)
 
@@ -130,6 +132,7 @@ async def supervisor_apply_leave(
         payload.start_on,
         payload.end_on,
         payload.reason,
+        duration=payload.duration,
     )
     return await request_to_read(session, row)
 

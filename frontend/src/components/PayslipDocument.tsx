@@ -58,8 +58,8 @@ export default function PayslipDocument({ path, token }: { path: string; token: 
     <div className="payslip-tools"><div><h3>Payslip</h3><p>View your statement or download a PDF copy.</p></div><button className="btn" type="button" disabled={!data || downloading} onClick={() => void download()}>{downloading ? "Preparing PDF…" : "↓ Download PDF"}</button></div>
     {error && <div className="payslip-error" role="alert"><p>{error}</p>{!data && <button type="button" className="btn ghost small" onClick={() => setRevision(v => v + 1)}>Try again</button>}</div>}
     {data && <div className="payslip-email-tools">
-      <button className="btn ghost" type="button" disabled={sending || data.status !== "APPROVED" || !data.employee_primary_email} onClick={() => void sendEmail()}>{sending ? "Sending..." : path.startsWith("/employee-portal/") ? "Email my payslip" : "Send to employee"}</button>
-      <small>{data.status !== "APPROVED" ? "Approve payroll before sending." : data.employee_primary_email ? `Work email: ${data.employee_primary_email}` : "Add the employee's work email to enable sending."}</small>
+      <button className="btn ghost" type="button" disabled={sending || !data.employee_primary_email} onClick={() => void sendEmail()}>{sending ? "Sending..." : path.startsWith("/employee-portal/") ? "Email my payslip" : data.status !== "APPROVED" ? "Send draft to employee" : "Send to employee"}</button>
+      <small>{data.employee_primary_email ? `Work email: ${data.employee_primary_email}` : "Add the employee's work email to enable sending."}</small>
       {emailNotice && <p role="status">{emailNotice}</p>}
     </div>}
     {!data ? !error && <TableSkeleton rows={6} /> : <article className="payslip-paper">

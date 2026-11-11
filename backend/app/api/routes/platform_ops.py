@@ -100,6 +100,7 @@ from app.services.leave_balances import as_of_for_year, balance_for
 from app.services.payroll import (
     add_compensation,
     approve_run,
+    unapprove_run,
     create_run,
     list_compensation,
     load_run,
@@ -201,6 +202,7 @@ async def hr_apply_leave(
         payload.end_on,
         payload.reason,
         payload.hr_action,
+        duration=payload.duration,
     )
     return await request_to_read(session, row)
 
@@ -828,6 +830,20 @@ async def approve_payroll_run(
     await company_for_tenant(session, run.company_id, tenant_id)
     approved = await approve_run(session, run)
     return await run_to_read(session, approved)
+
+
+@router.post("/payroll/runs/{run_id}/unapprove", response_model=PayrollRunRead)
+async def unapprove_payroll_run(
+    tenant_id: uuid.UUID,
+    run_id: uuid.UUID,
+    session: AsyncSession = Depends(get_platform_db),
+    _: object = Depends(get_current_admin),
+) -> dict:
+    run = await load_run(session, run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="Payroll run not found")
+    await company_for_tenant(session, run.company_id, tenant_id)
+    return await run_to_read(session, await unapprove_run(session, run))
 
 
 @router.post("/employees/{employee_id}/login", response_model=UserRead, status_code=status.HTTP_201_CREATED)

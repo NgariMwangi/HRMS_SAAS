@@ -58,7 +58,6 @@ async def test_pdf_download_permissions_approval_and_saved_amounts(client, monke
     run = response.json(); slip = run["payslips"][0]
     path = f"/payroll/payslips/{slip['id']}"
     own_path = f"/employee-portal/payslips/{slip['id']}"
-    assert (await client.post(path + "/email", headers=owner)).status_code == 409
     assert (await client.get(own_path + "/pdf", headers=employee)).status_code == 404
     assert (await client.get(path + "/pdf", headers=owner)).status_code == 200
     assert (await client.get(path + "/pdf", headers=employee)).status_code == 403

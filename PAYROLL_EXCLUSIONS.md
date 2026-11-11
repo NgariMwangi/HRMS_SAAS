@@ -1,5 +1,7 @@
 # Exclude employees from a payroll run
 
+Approved runs have an **Unapprove** action for payroll managers and platform administrators. Confirming returns the run to draft without deleting its payslips, amounts or exclusions; it can then be rerun and approved again. Employee portal visibility requires approval. Managers can email unapproved payslips with clear draft labelling. Previously sent emails and downloaded PDFs cannot be recalled. Approval-based deduction/benefit payment totals exclude runs returned to draft.
+
 Select a period and click **Run payroll** (or **Rerun** on a draft). A review panel opens before any payroll calculation. Search by name or employee number and tick the employees to exclude, then choose **Confirm payroll run** or **Confirm rerun**. Cancel leaves the run unchanged.
 
 The review shows counts for employees to include, manual exclusions and automatic omissions. Each employee displays their outcome and reason. With the selected period's end date, the backend checks the latest applicable salary: missing/future-only salary, zero or negative salary, and non-active employee status are shown as automatic omissions. Those rows cannot be manually included until the underlying employee/salary record is corrected; reopen the review after correcting it. The actual run rechecks eligibility when calculating payroll.

@@ -25,9 +25,10 @@ def mail(monkeypatch):
     return settings, calls
 
 
-async def test_brevo_sends_pdf_to_primary_email(mail):
+@pytest.mark.parametrize("status", ["APPROVED", "DRAFT"])
+async def test_brevo_sends_pdf_to_primary_email(mail, status):
     settings, calls = mail
-    data = {**sample_document(), "employee_primary_email": "primary@example.com", "employee_name": "Mary <b>Test</b>"}
+    data = {**sample_document(), "status": status, "employee_primary_email": "primary@example.com", "employee_name": "Mary <b>Test</b>"}
     result = await payslip_email.send(data)
     assert result["recipient"] == "primary@example.com"
     url, request = calls[0]
@@ -38,10 +39,11 @@ async def test_brevo_sends_pdf_to_primary_email(mail):
     assert "&lt;b&gt;Test&lt;/b&gt;" in payload["htmlContent"]
     assert base64.b64decode(payload["attachment"][0]["content"]).startswith(b"%PDF-")
     assert payload["attachment"][0]["name"] == data["filename"]
+    assert payload["subject"].startswith("DRAFT - ") == (status == "DRAFT")
+    assert ("This payroll has not been approved" in payload["htmlContent"]) == (status == "DRAFT")
 
 
-@pytest.mark.parametrize("change,code", [({"status": "DRAFT"},409),
-    ({"employee_primary_email": None},422), ({"employee_primary_email": "invalid"},422)])
+@pytest.mark.parametrize("change,code", [({"employee_primary_email": None},422), ({"employee_primary_email": "invalid"},422)])
 async def test_unsendable_payslips_never_call_brevo(mail, change, code):
     data = {**sample_document(), "employee_primary_email": "primary@example.com", **change}
     with pytest.raises(HTTPException) as exc:

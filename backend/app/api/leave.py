@@ -304,6 +304,7 @@ async def _create_request(
     status_value: str,
     user: User | None,
     actor_employee_id: uuid.UUID | None,
+    duration: str = "FULL_DAY",
 ) -> LeaveRequest:
     if employee.status == "TERMINATED":
         raise _bad("Leave cannot be applied for a terminated employee. Use their current record.")
@@ -313,6 +314,13 @@ async def _create_request(
         else set()
     )
     days = count_leave_days(start_on, end_on, leave_type.day_basis, closed)
+    fractions = {"FULL_DAY": Decimal("1"), "HALF_DAY": Decimal("0.5"), "QUARTER_DAY": Decimal("0.25")}
+    if duration not in fractions:
+        raise _bad("Choose full day, half day or quarter day")
+    if duration != "FULL_DAY":
+        if start_on != end_on:
+            raise _bad("Half-day and quarter-day leave must be for a single date")
+        days = fractions[duration]
     await _assert_enough_balance(session, employee, leave_type, start_on.year, days)
     await _assert_no_overlap(session, employee.id, start_on, end_on)
     row = LeaveRequest(
@@ -368,6 +376,7 @@ async def create_hr_request(
     end_on: date,
     reason: str | None,
     hr_action: str,
+    duration: str = "FULL_DAY",
 ) -> LeaveRequest:
     await require_hr(session, user)
     action = hr_action.strip().upper()
@@ -386,6 +395,7 @@ async def create_hr_request(
         session,
         employee=employee,
         leave_type=leave_type,
+        duration=duration,
         start_on=start_on,
         end_on=end_on,
         reason=reason,
@@ -410,6 +420,7 @@ async def create_self_request(
     end_on: date,
     reason: str | None,
     approval_mode: str,
+    duration: str = "FULL_DAY",
 ) -> LeaveRequest:
     await require_actor(session, user, employee_id)
     mode = approval_mode.strip().upper()
@@ -427,6 +438,7 @@ async def create_self_request(
         session,
         employee=employee,
         leave_type=leave_type,
+        duration=duration,
         start_on=start_on,
         end_on=end_on,
         reason=reason,
@@ -449,6 +461,7 @@ async def create_supervisor_request(
     start_on: date,
     end_on: date,
     reason: str | None,
+    duration: str = "FULL_DAY",
 ) -> LeaveRequest:
     await require_actor(session, user, supervisor_employee_id)
     employee = await session.get(Employee, employee_id)
@@ -463,6 +476,7 @@ async def create_supervisor_request(
         session,
         employee=employee,
         leave_type=leave_type,
+        duration=duration,
         start_on=start_on,
         end_on=end_on,
         reason=reason,

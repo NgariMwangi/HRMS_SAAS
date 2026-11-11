@@ -1,6 +1,7 @@
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -40,6 +41,7 @@ class LeaveHrCreate(BaseModel):
     leave_type_id: uuid.UUID
     start_on: date
     end_on: date
+    duration: Literal["FULL_DAY", "HALF_DAY", "QUARTER_DAY"] = "FULL_DAY"
     reason: str | None = Field(default=None, max_length=500)
     hr_action: str = Field(min_length=1, max_length=30)
 
@@ -49,6 +51,7 @@ class LeaveSelfCreate(BaseModel):
     leave_type_id: uuid.UUID
     start_on: date
     end_on: date
+    duration: Literal["FULL_DAY", "HALF_DAY", "QUARTER_DAY"] = "FULL_DAY"
     reason: str | None = Field(default=None, max_length=500)
     approval_mode: str = Field(default="SUPERVISOR_THEN_HR", max_length=30)
 
@@ -59,6 +62,7 @@ class LeaveSupervisorCreate(BaseModel):
     leave_type_id: uuid.UUID
     start_on: date
     end_on: date
+    duration: Literal["FULL_DAY", "HALF_DAY", "QUARTER_DAY"] = "FULL_DAY"
     reason: str | None = Field(default=None, max_length=500)
 
 

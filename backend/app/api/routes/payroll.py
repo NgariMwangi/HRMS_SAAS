@@ -22,6 +22,7 @@ from app.schemas.payroll import (
 from app.services.payroll import (
     add_compensation,
     approve_run,
+    unapprove_run,
     update_compensation,
     create_run,
     payroll_skip_reason,
@@ -209,3 +210,17 @@ async def approve_payroll_run(
     await company_for_tenant(session, run.company_id, tenant_id)
     approved = await approve_run(session, run)
     return await run_to_read(session, approved)
+
+
+@router.post("/payroll/runs/{run_id}/unapprove", response_model=PayrollRunRead, dependencies=[Depends(require_access('payroll.manage'))])
+async def unapprove_payroll_run(
+    run_id: uuid.UUID,
+    tenant_id: uuid.UUID = Depends(get_tenant_id),
+    session: AsyncSession = Depends(get_tenant_db),
+    user: User = Depends(get_current_user),
+) -> dict:
+    run = await load_run(session, run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="Payroll run not found")
+    await company_for_tenant(session, run.company_id, tenant_id)
+    return await run_to_read(session, await unapprove_run(session, run))

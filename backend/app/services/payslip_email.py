@@ -1,4 +1,4 @@
-"""Send saved, approved payslip PDFs through Brevo; never accept a recipient from the browser."""
+"""Email saved payslips; label unapproved statements as drafts."""
 import base64
 from html import escape
 
@@ -12,8 +12,6 @@ from app.services.payslip_pdf import render
 
 
 async def send(data):
-    if data["status"] != "APPROVED":
-        raise HTTPException(409, "Approve the payroll run before emailing payslips.")
     try:
         recipient = str(TypeAdapter(EmailStr).validate_python(data.get("employee_primary_email")))
     except ValidationError:
@@ -28,13 +26,15 @@ async def send(data):
         raise HTTPException(503, "The configured Brevo sender email is invalid.")
     pdf = await run_in_threadpool(render, data)
     period = f"{data['period_start']} to {data['period_end']}"
+    draft = data["status"] != "APPROVED"
     payload = {
         "sender": {"email": sender, "name": settings.brevo_sender_name},
         "to": [{"email": recipient, "name": data["employee_name"]}],
-        "subject": f"Your payslip | {data['company_name']} | {period}",
+        "subject": f"{'DRAFT - ' if draft else ''}Your payslip | {data['company_name']} | {period}",
         "htmlContent": f"<p>Hello {escape(data['employee_name'])},</p>"
             f"<p>Your payslip for {escape(period)} is attached.</p>"
-            f"<p>{escape(data['company_name'])}</p><p>This payslip is confidential.</p>",
+            + ("<p><strong>DRAFT: This payroll has not been approved. Amounts may change.</strong></p>" if draft else "")
+            + f"<p>{escape(data['company_name'])}</p><p>This payslip is confidential.</p>",
         "attachment": [{"name": data["filename"], "content": base64.b64encode(pdf).decode("ascii")}],
         "tags": ["payslip"],
     }

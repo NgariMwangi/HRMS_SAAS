@@ -21,6 +21,12 @@ function thisMonth(): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
+function shiftMonth(value: string, offset: number): string {
+  const [year, month] = value.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1 + offset, 1));
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
 export type PayrollScope = {
   token: string;
   apiBase?: string;
@@ -80,11 +86,18 @@ export function PayrollBoard({
     reviewRequest.current += 1;
     setReview(null);
     setBusy(false);
+    setOpenId(null);
+    setSlipId(null);
     load().catch(() => undefined);
   }, [company?.id, branch?.id, token, apiBase]);
 
-  const latest = runs[0];
-  const open = useMemo(() => runs.find((row) => row.id === openId) ?? latest, [runs, openId, latest]);
+  const monthRuns = useMemo(() => runs.filter(row => row.period_start.slice(0, 7) === month), [runs, month]);
+  const open = useMemo(() => monthRuns.find(row => row.id === openId) ?? monthRuns[0], [monthRuns, openId]);
+
+  function selectMonth(value: string) {
+    if (!/^\d{4}-\d{2}$/.test(value)) return;
+    setMonth(value); setOpenId(null); setSlipId(null); setReview(null); setPeopleQuery("");
+  }
 
   const selectedBounds = useMemo(() => monthBounds(month), [month]);
   const selectedRun = runs.find(
@@ -145,14 +158,17 @@ export function PayrollBoard({
     await preparePeriod(selectedBounds.start, selectedBounds.end);
   }
 
-  async function approve(run: PayrollRun) {
+  async function approve(run: PayrollRun, approved = true) {
     if (!canManageHr) return;
+    if (!approved && !window.confirm("Return this payroll to draft? You can edit exclusions and rerun it. Employees will no longer see its payslips until it is approved again. Emails already sent cannot be recalled.")) return;
     setBusy(true);
     try {
-      const saved = await api<PayrollRun>(apiUrl(apiBase, `/payroll/runs/${run.id}/approve`), { method: "POST", token });
+      const saved = await api<PayrollRun>(apiUrl(apiBase, `/payroll/runs/${run.id}/${approved ? "approve" : "unapprove"}`), { method: "POST", token });
       setRuns((current) => current.map((row) => (row.id === saved.id ? saved : row)));
+      setSlipId(null);
+      setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not approve");
+      setError(err instanceof Error ? err.message : approved ? "Could not approve" : "Could not unapprove");
     } finally {
       setBusy(false);
     }
@@ -179,17 +195,27 @@ export function PayrollBoard({
         </>
       ) : (
         <>
-          {canManageHr ? (
             <form className="filters" onSubmit={createRun}>
+              <button className="btn ghost small" type="button" disabled={busy} onClick={() => selectMonth(shiftMonth(month, -1))}>Previous month</button>
               <label>
-                Period
-                <input type="month" value={month} disabled={busy} onChange={(event) => { setMonth(event.target.value); setReview(null); }} />
+                Payroll month
+                <input type="month" required value={month} disabled={busy} onChange={(event) => selectMonth(event.target.value)} />
               </label>
+              <button className="btn ghost small" type="button" disabled={busy} onClick={() => selectMonth(shiftMonth(month, 1))}>Next month</button>
+              <label>Saved payrolls
+                <select value={open?.id ?? ""} disabled={busy || !runs.length} onChange={event => {
+                  const selected = runs.find(run => run.id === event.target.value);
+                  if (selected) { selectMonth(selected.period_start.slice(0, 7)); setOpenId(selected.id); }
+                }}>
+                  <option value="" disabled>Select a saved payroll</option>
+                  {runs.map(run => <option key={run.id} value={run.id}>{formatDate(run.period_start)} – {formatDate(run.period_end)} · {run.status.toLowerCase()}</option>)}
+                </select>
+              </label>
+              {canManageHr &&
               <button className="btn small" type="submit" disabled={busy || selectedApproved}>
                 {busy ? "Running…" : selectedApproved ? "Already approved" : selectedDraft ? "Rerun payroll" : "Run payroll"}
-              </button>
+              </button>}
             </form>
-          ) : null}
           {canManageHr && review && <section className="card card-pad" aria-label="Review payroll employees">
             <h3>Review employees · {formatDate(review.start)} – {formatDate(review.end)}</h3>
             <p>Tick employees to exclude from this payroll run only. Employees without an applicable salary or with an inactive status are automatically left out.</p>
@@ -210,16 +236,16 @@ export function PayrollBoard({
             </div>
           </section>}
           <div className="kpis">
-            <Kpi label="Current period" value={open ? `${formatDate(open.period_start)} – ${formatDate(open.period_end)}` : "—"} hint={open ? open.status.toLowerCase() : "No run yet"} />
+            <Kpi label="Selected period" value={open ? `${formatDate(open.period_start)} – ${formatDate(open.period_end)}` : month} hint={open ? open.status.toLowerCase() : "No run for this month"} />
             <Kpi label="Gross pay" value={formatMoney(open?.gross_total, open?.currency_code)} />
             <Kpi label="Deductions" value={formatMoney(open?.deduction_total, open?.currency_code)} />
             <Kpi label="Net pay" value={formatMoney(open?.net_total, open?.currency_code)} />
           </div>
           <section className="card">
-            {runs.length === 0 ? (
+            {monthRuns.length === 0 ? (
               <EmptyState
-                title="No payroll runs"
-                note="Add salaries on employee records, then run this branch’s period. Statutory amounts come from the country pack."
+                title="No payroll for this month"
+                note="Choose another month or a saved payroll above. To create this month's payroll, review employees and run it."
               />
             ) : (
               <>
@@ -234,7 +260,7 @@ export function PayrollBoard({
                     </tr>
                   </thead>
                   <tbody>
-                    {runs.map((row) => (
+                    {monthRuns.map((row) => (
                       <tr key={row.id}>
                         <td data-label="Period">{formatDate(row.period_start)} – {formatDate(row.period_end)}</td>
                         <td data-label="Status"><StatusPill value={row.status} /></td>
@@ -242,6 +268,7 @@ export function PayrollBoard({
                         <td data-label="Net">{formatMoney(row.net_total, row.currency_code)}</td>
                         <td className="row-actions">
                           <button className="btn ghost small" type="button" onClick={() => { setOpenId(row.id); setSlipId(null); }}>Payslips</button>
+                          {canManageHr && row.status === "APPROVED" && <button className="btn ghost small" type="button" disabled={busy || !!review} onClick={() => void approve(row, false)}>Unapprove</button>}
                           {canManageHr && row.status === "DRAFT" ? (
                             <>
                               <button className="btn ghost small" type="button" disabled={busy} onClick={() => { setMonth(row.period_start.slice(0, 7)); void preparePeriod(row.period_start, row.period_end); }}>Rerun</button>

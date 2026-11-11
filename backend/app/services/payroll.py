@@ -620,3 +620,13 @@ async def approve_run(session: AsyncSession, run: PayrollRun) -> PayrollRun:
     loaded = await load_run(session, run.id)
     assert loaded is not None
     return loaded
+
+
+async def unapprove_run(session: AsyncSession, run: PayrollRun) -> PayrollRun:
+    # Preserve calculated payslips and exclusions; approved-only portal/payment
+    # queries stop including this run as soon as the transaction commits.
+    run.status = "DRAFT"
+    await session.flush()
+    loaded = await load_run(session, run.id)
+    assert loaded is not None
+    return loaded

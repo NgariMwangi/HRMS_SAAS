@@ -2,7 +2,7 @@
 
 ## Email through Brevo
 
-Approved payslips have a **Send to employee** button in payroll and **Email my payslip** in the employee portal. The PDF is sent only to the employee record's `Work email` field (`Employee.email`), never the login email or personal-email fallback. Add a work email to enable the button. Draft payslips cannot be emailed. Payroll managers and platform administrators retain their existing access boundaries; employees can send only their own approved payslips.
+Payslips have a **Send to employee** button in payroll and **Email my payslip** in the employee portal. The PDF is sent only to the employee record's `Work email` field (`Employee.email`), never the login email or personal-email fallback. Add a work email to enable the button. Payroll managers and platform administrators can email drafts: the button reads **Send draft to employee**, the email subject/body identify it as unapproved, and the attached PDF retains its DRAFT watermark. Payroll managers and platform administrators retain their existing access boundaries; employees can send only their own approved payslips from the portal.
 
 Set these server-side environment variables (never frontend/Vite variables):
 

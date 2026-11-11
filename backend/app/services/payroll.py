@@ -9,6 +9,7 @@ from sqlalchemy.orm import selectinload
 from app.api.org import branch_for_company, company_for_tenant
 from app.models import (
     Branch,
+    Company,
     CompanyPayrollSettings,
     Country,
     Currency,
@@ -26,6 +27,7 @@ from app.models import (
 from app.services.benefits import benefits_for_period
 from app.services.deductions import deductions_for_period
 from app.services.payroll_calc import calculate_payslip, money, pack_as_of, salary_days
+from app.models.workforce_payments import PaymentRecord
 
 FREQUENCIES = {"MONTHLY", "BIWEEKLY", "WEEKLY"}
 STRUCTURES = {"GROSS_ONLY", "BASIC_PLUS_ALLOWANCES"}
@@ -300,7 +302,7 @@ async def list_compensation(session: AsyncSession, employee: Employee) -> list[E
             await session.scalars(
                 select(EmployeeCompensation)
                 .options(selectinload(EmployeeCompensation.lines))
-                .where(EmployeeCompensation.employee_id == employee.id)
+                .where(EmployeeCompensation.employee_id == employee.id, EmployeeCompensation.is_historical.is_(False))
                 .order_by(EmployeeCompensation.effective_from.desc())
             )
         ).all()
@@ -388,6 +390,7 @@ async def update_compensation(
         .where(
             EmployeeCompensation.id == compensation_id,
             EmployeeCompensation.employee_id == employee.id,
+            EmployeeCompensation.is_historical.is_(False),
         )
     )
     if row is None:
@@ -420,6 +423,7 @@ async def compensation_as_of(session: AsyncSession, employee_id, on: date) -> Em
         .where(
             EmployeeCompensation.employee_id == employee_id,
             EmployeeCompensation.effective_from <= on,
+            EmployeeCompensation.is_historical.is_(False),
         )
         .order_by(EmployeeCompensation.effective_from.desc())
         .limit(1)
@@ -444,6 +448,7 @@ def payroll_skip_reason(employee: Employee, pay: EmployeeCompensation | None, pe
 
 async def create_run(session: AsyncSession, company_id, tenant_id, branch_id, period_start: date, period_end: date, excluded_employee_ids=None) -> tuple[PayrollRun, int]:
     await company_for_tenant(session, company_id, tenant_id)
+    await session.scalar(select(Company.id).where(Company.id == company_id).with_for_update())
     branch = await branch_for_company(session, branch_id, company_id)
     if period_end < period_start:
         raise _bad("period_end must be on or after period_start")
@@ -532,7 +537,7 @@ async def create_run(session: AsyncSession, company_id, tenant_id, branch_id, pe
             places=places,
             other_deductions=scheduled.get(person.id),
             benefits=earned.get(person.id),
-            payable_days=salary_days(period_start, period_end, person.date_joined),
+            payable_days=salary_days(period_start, period_end, person.date_joined) if person.prorate_payroll else 30,
         )
         payslip = PayrollPayslip(
             company_id=company_id,
@@ -626,6 +631,11 @@ async def approve_run(session: AsyncSession, run: PayrollRun) -> PayrollRun:
 
 
 async def unapprove_run(session: AsyncSession, run: PayrollRun) -> PayrollRun:
+    await session.scalar(select(PayrollRun.id).where(PayrollRun.id == run.id).with_for_update())
+    payment = await session.scalar(select(PaymentRecord.id).join(PayrollPayslip,
+        PaymentRecord.payslip_id == PayrollPayslip.id).where(PayrollPayslip.run_id == run.id).limit(1))
+    if payment is not None:
+        raise _bad("Payroll has payment history and cannot be reopened. Preserve it and record corrections separately", 409)
     # Preserve calculated payslips and exclusions; approved-only portal/payment
     # queries stop including this run as soon as the transaction commits.
     run.status = "DRAFT"

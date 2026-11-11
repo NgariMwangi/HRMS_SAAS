@@ -266,6 +266,15 @@ def calculate_payslip(
     if not pension_done:
         apply_voluntary_pension()
 
+    # Cash benefits paid directly remain taxable earnings. Offset the payment
+    # after tax so it is not paid twice. A negative net records an advance to recover.
+    for index, item in enumerate(benefit_lines):
+        prepaid = money(Decimal(item.get("paid_elsewhere", ZERO)), places)
+        if prepaid > ZERO:
+            lines.append({"code": "PREPAID_BENEFIT", "name": f"Already paid: {item['name']}"[:100],
+                          "party": "EMPLOYEE", "kind": "DEDUCTION", "amount": prepaid, "sort_order": 280 + index})
+            employee_deductions += prepaid
+
     # Loans, SACCO, welfare etc. come off net pay after tax, and never push net below zero.
     for index, item in enumerate(other_deductions or []):
         available = max(ZERO, gross - employee_deductions)

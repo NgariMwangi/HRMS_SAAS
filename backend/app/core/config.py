@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     hrms_base_domain: str = "hrms.techtutor.co.ke"
     hrms_domain_target: str = "hrms.techtutor.co.ke"
     hrms_central_hosts: str = "localhost,127.0.0.1,::1,test,backend"
+    hrms_workspace_hosts: str = ""
     domain_tls_secret: str = ""
     google_client_id: str = ""
     google_cookie_secure: bool = False

@@ -317,6 +317,12 @@ class Employee(Base):
         UUID(as_uuid=True), ForeignKey("employees.id", ondelete="SET NULL"), index=True
     )
     clock_device_id: Mapped[str | None] = mapped_column(String(64))
+    bank_name: Mapped[str | None] = mapped_column(String(100))
+    bank_branch: Mapped[str | None] = mapped_column(String(100))
+    bank_account_number: Mapped[str | None] = mapped_column(String(50))
+    bank_code: Mapped[str | None] = mapped_column(String(20))
+    swift_code: Mapped[str | None] = mapped_column(String(20))
+    prorate_payroll: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=text("true"))
     suspension_pay_treatment: Mapped[str | None] = mapped_column(String(20))
     suspension_pay_deduction_percent: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
 

@@ -73,7 +73,7 @@ async def get_tenant_db(
     context = getattr(request.state, "company_domain", None)
     if context and context["tenant_id"] != tenant_id:
         raise HTTPException(403, "This address is restricted to its company")
-    if context and request.query_params.get("company_id") not in {None, "", str(context["company_id"])}:
+    if context and context.get("scope") != "workspace" and request.query_params.get("company_id") not in {None, "", str(context["company_id"])}:
         raise HTTPException(403, "This address is restricted to its company")
 
     maker = get_session_maker()
@@ -88,8 +88,16 @@ async def get_tenant_db(
                 raise _unauthorized("Invalid token")
             await require_domain_account(request, session, user)
             if context:
-                session.info["domain_company_id"] = context["company_id"]
-                await session.execute(text("SELECT set_config('app.domain_company_id', :cid, true)"), {"cid": str(context["company_id"])})
+                company_id = context["company_id"] if context.get("scope") != "workspace" else None
+                if context.get("scope") == "workspace" and user.role == "EMPLOYEE":
+                    from app.models import Employee
+                    employee = await session.get(Employee, user.employee_id)
+                    company_id = employee.company_id
+                if company_id is not None:
+                    if request.query_params.get("company_id") not in {None, "", str(company_id)}:
+                        raise HTTPException(403, "This address is restricted to your company")
+                    session.info["domain_company_id"] = company_id
+                    await session.execute(text("SELECT set_config('app.domain_company_id', :cid, true)"), {"cid": str(company_id)})
             yield session
             await session.commit()
         except Exception:

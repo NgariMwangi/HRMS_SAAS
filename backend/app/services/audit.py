@@ -24,6 +24,7 @@ _SKIP_PATHS = {
     "/redoc",
 }
 _SECRET_KEYS = {
+    "bank_account_number",
     "credential",
     "nonce",
     "google_subject",
@@ -113,6 +114,10 @@ def response_message(status_code: int, body: bytes | None) -> str:
     if isinstance(detail, str) and detail.strip():
         return _clip(detail)
     if detail is not None:
+        if isinstance(detail, list):
+            for item in detail:
+                if isinstance(item, dict) and any(str(part).lower() in _SECRET_KEYS for part in item.get("loc", [])):
+                    item["input"] = "[redacted]"
         return _clip(json.dumps(detail, ensure_ascii=False))
     return f"Failed ({status_code})"
 

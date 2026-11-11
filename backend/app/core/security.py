@@ -5,6 +5,7 @@ from uuid import UUID, uuid4
 
 import bcrypt
 import jwt
+from werkzeug.security import check_password_hash
 
 from app.core.config import get_settings
 
@@ -17,7 +18,16 @@ def hash_password(plain: str) -> str:
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
+    """Accept SaaS bcrypt hashes and unchanged hashes imported from the Flask HRMS."""
+    try:
+        if hashed.startswith(("$2a$", "$2b$", "$2y$")):
+            return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
+        if hashed.startswith(("scrypt:", "pbkdf2:")):
+            return check_password_hash(hashed, plain)
+    except (ValueError, TypeError, OverflowError):
+        # Invalid stored hashes must fail authentication rather than raise a 500.
+        return False
+    return False
 
 
 def _encode_token(

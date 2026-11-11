@@ -1,4 +1,6 @@
 from app.db.base import Base
+from app.models.legacy_import import LegacyImportRecord
+from app.models import workforce_payments
 from app.models.leave_email import LeaveEmail
 from app.models.domains import CompanyDomain
 from app.models.google_challenge import GoogleChallenge

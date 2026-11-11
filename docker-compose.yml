@@ -38,6 +38,7 @@ services:
       HRMS_BASE_DOMAIN: ${HRMS_BASE_DOMAIN:-hrms.techtutor.co.ke}
       HRMS_DOMAIN_TARGET: ${HRMS_DOMAIN_TARGET:-hrms.techtutor.co.ke}
       HRMS_CENTRAL_HOSTS: ${HRMS_CENTRAL_HOSTS:-localhost,127.0.0.1,::1,test,backend}
+      HRMS_WORKSPACE_HOSTS: ${HRMS_WORKSPACE_HOSTS:-}
       DOMAIN_TLS_SECRET: ${DOMAIN_TLS_SECRET:-}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       BREVO_API_KEY: ${BREVO_API_KEY:-}

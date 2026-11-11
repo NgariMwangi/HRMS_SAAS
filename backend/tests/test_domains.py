@@ -21,6 +21,27 @@ def test_invalid_hostname(value):
 
 
 @pytest.mark.usefixtures("clean_tenant_tables")
+async def test_shared_workspace_domain(client, monkeypatch):
+    w, owner = await workspace(client)
+    _, foreign = await workspace(client, "foreign-shared@example.com")
+    second = (await client.post("/companies", headers=owner, json={"name": "Shared second company"})).json()
+    branch = (await client.post("/branches", headers=owner, json={"company_id": second["id"], "country_id": w["branch"]["country_id"], "name": "Second office", "code": "SECOND"})).json()
+    _, identity, employee = await staff_login(client, owner, {**w, "company": second, "branch": branch}, "SharedEmployee")
+    host = (await client.get(f"/domains?company_id={w['company']['id']}", headers=owner)).json()[0]["hostname"]
+    monkeypatch.setattr(get_settings(), "hrms_workspace_hosts", host)
+    bound = {**owner, "Host": host}
+    assert (await client.get("/domains/context", headers=bound)).json()["company"]["scope"] == "workspace"
+    assert {row["id"] for row in (await client.get("/companies", headers=bound)).json()} == {w["company"]["id"], second["id"]}
+    assert (await client.get(f"/employees?company_id={second['id']}", headers=bound)).status_code == 200
+    assert (await client.get("/companies", headers={**foreign, "Host": host})).status_code == 403
+    assert (await client.post("/auth/login", headers={"Host": host}, json={"email": identity["email"], "password": "Password123!"})).status_code == 200
+    staff = {**employee, "Host": host}
+    assert [row["id"] for row in (await client.get("/companies", headers=staff)).json()] == [second["id"]]
+    assert (await client.get(f"/companies/{w['company']['id']}", headers=staff)).status_code == 404
+    assert (await client.get(f"/employees?company_id={w['company']['id']}", headers=staff)).status_code == 403
+
+
+@pytest.mark.usefixtures("clean_tenant_tables")
 async def test_domain_management_and_dns_proof(client, monkeypatch):
     w, owner = await workspace(client)
     other, foreign = await workspace(client, "foreign-domains@example.com")

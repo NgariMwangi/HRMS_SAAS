@@ -16,6 +16,7 @@ email-validator==2.2.0
 PyJWT[crypto]==2.10.1
 tzdata==2025.2
 bcrypt==4.3.0
+Werkzeug>=3.1,<4
 
 dnspython==2.7.0
 reportlab==5.1.0

@@ -165,7 +165,7 @@ export function WorkspaceProvider({ children, employeePortal = false }: { childr
       hasPermission: (permission) => permissions.includes(permission) && (!employeePortal || permission.endsWith(".view_own") || ["attendance.self", "people.update_own_contact", "performance.manage_own_goals", "performance.self_assess", "recruitment.interview"].includes(permission)),
       reloadAccess,
       setCompanyId: (id: string) => {
-        if (domainCompany && id !== domainCompany.company_id) return;
+        if (domainCompany && domainCompany.scope !== "workspace" && id !== domainCompany.company_id) return;
         setCompanyId(id);
         const first = allBranches.find((row) => row.company_id === id);
         setBranchId(first?.id ?? "");

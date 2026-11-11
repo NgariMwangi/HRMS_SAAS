@@ -75,7 +75,9 @@ async def resolve_company(host):
         result = (await session.execute(select(CompanyDomain, Company).join(Company, Company.id == CompanyDomain.company_id).join(Tenant, Tenant.id == Company.tenant_id).where(CompanyDomain.hostname == host, CompanyDomain.status == "ACTIVE", Company.status == "ACTIVE", Tenant.status == "ACTIVE"))).first()
         if result:
             domain, company = result
-            return {"company_id": company.id, "tenant_id": company.tenant_id, "company_name": company.name, "hostname": domain.hostname}
+            workspace_hosts = {item.strip().lower().rstrip(".") for item in get_settings().hrms_workspace_hosts.split(",") if item.strip()}
+            return {"company_id": company.id, "tenant_id": company.tenant_id, "company_name": company.name, "hostname": domain.hostname,
+                    "scope": "workspace" if host in workspace_hosts else "company"}
     return None
 
 

@@ -9,6 +9,7 @@ import AdminCountries from "./pages/AdminCountries";
 import AdminPayrollPacks from "./pages/AdminPayrollPacks";
 import AdminEmployeeProfile from "./pages/AdminEmployeeProfile";
 import AdminEmployeeSalary from "./pages/AdminEmployeeSalary";
+const AdminWorkforcePayments = lazy(() => import("./pages/AdminWorkforcePayments"));
 import AdminLogin from "./pages/AdminLogin";
 import AdminOverview from "./pages/AdminOverview";
 import AdminShell from "./pages/AdminShell";
@@ -31,6 +32,8 @@ import LeavePage from "./pages/app/Leave";
 import LifecyclePage from "./pages/app/Lifecycle";
 import PayrollPage from "./pages/app/Payroll";
 import PayrollSettingsPage from "./pages/app/PayrollSettings";
+const WorkforcePayments = lazy(() => import("./pages/app/WorkforcePayments"));
+const ImportedHistory = lazy(() => import("./pages/app/ImportedHistory"));
 const RecruitmentPage = lazy(() => import("./pages/app/Recruitment"));
 const ReportsPage = lazy(() => import("./pages/app/Reports"));
 import SettingsPage from "./pages/app/Settings";
@@ -88,6 +91,8 @@ export default function App() {
           <Route path="leave" element={<LeavePage />} />
           <Route path="payroll" element={<PayrollPage />} />
           <Route path="payroll/settings" element={<PayrollSettingsPage />} />
+          <Route path="payroll/imported-history" element={<Suspense fallback={<PageSkeleton />}><ImportedHistory /></Suspense>} />
+          <Route path="payroll/:section" element={<Suspense fallback={<PageSkeleton />}><WorkforcePayments /></Suspense>} />
           <Route path="performance/appraisals/:appraisalId/:section?" element={<Suspense fallback={<PageSkeleton />}><PerformanceRecord /></Suspense>} />
           <Route path="performance/records/:recordId" element={<Suspense fallback={<PageSkeleton />}><SimplePerformanceRecord /></Suspense>} />
           <Route path="performance/:page" element={<Suspense fallback={<PageSkeleton />}><PerformancePage /></Suspense>} />
@@ -104,6 +109,7 @@ export default function App() {
           <Route index element={<AdminOverview />} />
           <Route path="tenants" element={<AdminTenants />} />
           <Route path="tenants/:tenantId" element={<AdminTenantDetail />} />
+          <Route path="tenants/:tenantId/workforce/:section" element={<Suspense fallback={<PageSkeleton />}><AdminWorkforcePayments /></Suspense>} />
           <Route path="tenants/:tenantId/employees/:employeeId/salary" element={<AdminEmployeeSalary />} />
           <Route path="tenants/:tenantId/employees/:employeeId" element={<AdminEmployeeProfile />} />
           <Route path="countries" element={<AdminCountries />} />

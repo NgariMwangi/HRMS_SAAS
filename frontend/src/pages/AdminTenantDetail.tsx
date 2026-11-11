@@ -952,6 +952,7 @@ export default function AdminTenantDetail() {
             <div className="page-tabs">
               <button type="button" className={payrollSection === "runs" ? "active" : ""} onClick={() => setPayrollSection("runs")}>Runs</button>
               <button type="button" className={payrollSection === "settings" ? "active" : ""} onClick={() => setPayrollSection("settings")}>Configuration</button>
+              <Link to={`/admin/tenants/${tenantId}/workforce/consultants`}>Consultants, overtime and payments</Link>
             </div>
             {payrollSection === "runs" ? (
               <PayrollBoard

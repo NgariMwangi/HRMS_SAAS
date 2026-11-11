@@ -71,5 +71,5 @@ async def require_domain_account(request, session, user, *, employee_login=False
         raise HTTPException(403, "This account cannot sign in to this company's address")
     if employee_login or user.role == "EMPLOYEE":
         employee = await session.get(Employee, user.employee_id) if user.employee_id else None
-        if employee is None or employee.company_id != context["company_id"]:
+        if employee is None or (context.get("scope") != "workspace" and employee.company_id != context["company_id"]):
             raise HTTPException(403, "This employee account belongs to another company")

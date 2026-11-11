@@ -136,6 +136,7 @@ class CompanyPayrollSettings(Base):
 
 class EmployeeCompensation(Base):
     __tablename__ = "employee_compensation"
+    is_historical: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     __table_args__ = (
         UniqueConstraint("employee_id", "effective_from", name="uq_employee_compensation_from"),
         CheckConstraint(

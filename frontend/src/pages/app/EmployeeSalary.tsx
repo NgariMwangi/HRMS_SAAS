@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { useWorkspace } from "../../context/WorkspaceContext";
 import { api, apiUrl } from "../../api";
 import { EmployeeBenefits } from "../../components/EmployeeBenefits";
+import { EmployeePaySettings } from "../../components/EmployeePaySettings";
 import { EmployeeDeductions } from "../../components/EmployeeDeductions";
 import { employeeName, type Compensation, type EmployeeSummary, type PayrollSettings } from "../../types";
 import { EmptyState, PageHeader, ProfileSkeleton, formatDate, formatMoney } from "../../ui";
@@ -382,6 +383,7 @@ export function SalaryBoard({
         canManage={canManageHr}
         notify={notify}
       />
+      {canManageHr ? <EmployeePaySettings token={token} apiBase={apiBase} employeeId={employee.id} notify={notify} /> : null}
     </>
   );
 }

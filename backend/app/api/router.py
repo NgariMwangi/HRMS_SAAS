@@ -33,6 +33,14 @@ from app.api.routes import (
 )
 
 api_router = APIRouter()
+from app.api.routes import legacy_import
+api_router.include_router(legacy_import.router)
+from app.api.routes import workforce_payments
+api_router.include_router(workforce_payments.router)
+api_router.include_router(workforce_payments.platform_router)
+from app.api.routes import employee_pay_settings
+api_router.include_router(employee_pay_settings.router)
+api_router.include_router(employee_pay_settings.platform_router)
 from app.api.routes import payslips
 api_router.include_router(payslips.router)
 api_router.include_router(payslips.employee_router)

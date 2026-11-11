@@ -13,6 +13,7 @@ from sqlalchemy.orm import selectinload
 from app.api.org import company_for_tenant
 from app.services.salary_item_types import resolve_type
 from app.models import BenefitType, Employee, EmployeeBenefit, PayrollPayslip, PayrollPayslipLine, PayrollRun
+from app.models.workforce_payments import PaymentRecord
 
 FREQUENCIES = {"RECURRING", "ONE_OFF"}
 STATUSES = {"ACTIVE", "STOPPED"}
@@ -103,7 +104,18 @@ async def paid_amounts(session: AsyncSession, benefit_ids: list[uuid.UUID]) -> d
         )
         .group_by(PayrollPayslipLine.employee_benefit_id)
     )
-    return {row[0]: Decimal(row[1]) for row in rows.all()}
+    result = {row[0]: Decimal(row[1]) for row in rows.all()}
+    # An approved payroll already represents the benefit for that month. Count a
+    # direct payment only while it has not yet been accounted for by payroll.
+    represented = select(PayrollPayslipLine.id).join(PayrollPayslip).join(PayrollRun).where(
+        PayrollPayslipLine.employee_benefit_id == PaymentRecord.benefit_id,
+        PayrollRun.status == "APPROVED", PayrollRun.period_start <= PaymentRecord.period_start,
+        PayrollRun.period_end >= PaymentRecord.period_start).exists()
+    external = await session.execute(select(PaymentRecord.benefit_id, func.sum(PaymentRecord.amount)).where(
+        PaymentRecord.benefit_id.in_(benefit_ids), PaymentRecord.status == "POSTED", ~represented).group_by(PaymentRecord.benefit_id))
+    for identity, amount in external:
+        result[identity] = result.get(identity, ZERO) + Decimal(amount)
+    return result
 
 
 def benefit_to_read(row: EmployeeBenefit, paid: Decimal) -> dict:
@@ -190,6 +202,8 @@ async def add_benefit(session: AsyncSession, employee: Employee, payload) -> dic
 
 async def update_benefit(session: AsyncSession, employee: Employee, benefit_id, payload) -> dict:
     row = await _benefit_for_employee(session, employee, benefit_id)
+    if await session.scalar(select(PaymentRecord.id).where(PaymentRecord.benefit_id == row.id).limit(1)):
+        raise _bad("This benefit has payment history and cannot be edited. Create a new schedule", 409)
     await _apply_benefit_fields(session, employee, row, payload, creating=False)
     await session.flush()
     loaded = await _load_benefit(session, row.id)
@@ -200,6 +214,8 @@ async def update_benefit(session: AsyncSession, employee: Employee, benefit_id, 
 
 async def delete_benefit(session: AsyncSession, employee: Employee, benefit_id) -> None:
     row = await _benefit_for_employee(session, employee, benefit_id)
+    if await session.scalar(select(PaymentRecord.id).where(PaymentRecord.benefit_id == row.id).limit(1)):
+        raise _bad("This benefit has payment history and cannot be deleted", 409)
     paid = await paid_amounts(session, [row.id])
     if paid.get(row.id, ZERO) > ZERO:
         raise _bad(
@@ -233,9 +249,13 @@ async def benefits_for_period(
         )
     ).all()
     out: dict[uuid.UUID, list[dict]] = defaultdict(list)
+    direct = dict((await session.execute(select(PaymentRecord.benefit_id, func.sum(PaymentRecord.amount)).where(
+        PaymentRecord.benefit_id.in_([row.id for row in rows]), PaymentRecord.status == "POSTED",
+        PaymentRecord.period_start >= period_start.replace(day=1), PaymentRecord.period_start <= period_end
+    ).group_by(PaymentRecord.benefit_id))).all())
     for row in rows:
         name = row.benefit_type.name
         if row.note:
             name = f"{name} – {row.note}"
-        out[row.employee_id].append({"id": row.id, "name": name[:100], "amount": row.amount})
+        out[row.employee_id].append({"id": row.id, "name": name[:100], "amount": row.amount, "paid_elsewhere": direct.get(row.id, ZERO)})
     return out

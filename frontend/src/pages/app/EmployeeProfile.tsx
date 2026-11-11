@@ -7,6 +7,7 @@ import { NextOfKinList } from "../../components/NextOfKinFields";
 import { SupervisorList } from "../../components/SupervisorFields";
 import { ClockLoginCard } from "../../components/ClockLoginCard";
 import PerformanceHistory from "../../components/PerformanceHistory";
+import { EmployeePaySettings } from "../../components/EmployeePaySettings";
 import { LeaveBalances } from "../../components/LeaveBalances";
 import { employeeName, suspensionPayText, type Department, type Employee, type JobTitle, type LeaveType, type LifecycleEvent, type NextOfKin, type Supervisor } from "../../types";
 import { EmptyState, formatDate, ProfileSkeleton, StatusPill } from "../../ui";
@@ -170,6 +171,7 @@ export default function EmployeeProfile() {
       </section>
 
       <NextOfKinList rows={kin} />
+      {hasPermission("payroll.manage") ? <EmployeePaySettings token={token} employeeId={employee.id} notify={notify} /> : null}
 
       {canViewLeave ? <section className="card">
         <LeaveBalances

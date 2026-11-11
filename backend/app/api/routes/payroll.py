@@ -122,7 +122,7 @@ async def payroll_people(session, company_id, tenant_id, branch_id, period_end=N
     if period_end is not None and rows:
         # Match compensation_as_of, fetching the latest applicable salary and
         # its allowances for everyone together rather than one query per person.
-        pay_rows = (await session.scalars(select(EmployeeCompensation)
+        pay_rows = (await session.scalars(select(EmployeeCompensation).where(EmployeeCompensation.is_historical.is_(False))
             .options(selectinload(EmployeeCompensation.lines))
             .where(EmployeeCompensation.employee_id.in_([row.id for row in rows]),
                 EmployeeCompensation.effective_from <= period_end)

@@ -1,5 +1,7 @@
 # Company domains
 
+To share a verified custom domain across the companies in its workspace, set `HRMS_WORKSPACE_HOSTS=hrms.nexgenfuelworks.com` in the root `.env` and recreate the backend and reminder services. Deploy the matching frontend so the company selector permits switching. The hostname must still have an active domain registration; its registered workspace remains the access boundary. Workspace owners can switch companies, while employee accounts remain scoped to their own company. Domains not listed retain their single-company behavior.
+
 The main domain is **hrms.techtutor.co.ke**. Existing and newly created companies receive stable automatic addresses such as `kips-medical-centre.hrms.techtutor.co.ke`. Company renames do not change their addresses. Colliding names receive a unique suffix. Platform administration is available at `https://admin.hrms.techtutor.co.ke/admin` or the main domain's `/admin` page.
 
 Company Owner/Admin: open **Workspace → Domains**, select the company, copy its automatic link or add a custom hostname. Platform Admin: open **Tenants → tenant → Company domains**. HR, Manager and Employee roles do not manage domains by default; a custom role can be explicitly granted `domains.manage`.

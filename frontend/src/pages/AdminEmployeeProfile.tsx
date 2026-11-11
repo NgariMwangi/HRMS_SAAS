@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { adminToken, api, apiBlob } from "../api";
 import { ClockLoginCard } from "../components/ClockLoginCard";
+import { EmployeePaySettings } from "../components/EmployeePaySettings";
 import { LeaveBalances } from "../components/LeaveBalances";
 import { LifecycleActions, LifecycleTimeline } from "../components/LifecyclePanel";
 import { EmployeeDocuments } from "../components/EmployeeDocuments";
@@ -166,6 +167,7 @@ export default function AdminEmployeeProfile() {
       </section>
 
       {notice ? <p className="muted">{notice}</p> : null}
+      <EmployeePaySettings token={token} apiBase={base} employeeId={employee.id} notify={setNotice} />
 
       <ClockLoginCard
         employee={employee}

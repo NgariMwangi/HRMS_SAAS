@@ -66,6 +66,10 @@ const groups: NavGroup[] = [
     items: [
       { to: "/app/payroll", label: "Payroll", icon: <IconPay /> },
       { to: "/app/payroll/settings", label: "Pay configuration", icon: <IconSettings /> },
+      { to: "/app/payroll/consultants", label: "Consultants", icon: <IconBriefcase /> },
+      { to: "/app/payroll/overtime", label: "Overtime", icon: <IconClock /> },
+      { to: "/app/payroll/payments", label: "Payment history", icon: <IconPay /> },
+      { to: "/app/payroll/imported-history", label: "Imported history", icon: <IconDoc /> },
     ],
   },
   {

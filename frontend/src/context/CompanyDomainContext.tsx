@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 import { api } from "../api";
 import { PageSkeleton } from "../ui";
 
-type DomainContext = { company: { company_id: string; tenant_id: string; company_name: string; hostname: string } | null; central_url: string };
+type DomainContext = { company: { company_id: string; tenant_id: string; company_name: string; hostname: string; scope?: "company" | "workspace" } | null; central_url: string };
 const Context = createContext<DomainContext>({ company: null, central_url: "" });
 
 export function CompanyDomainProvider({ children }: { children: ReactNode }) {

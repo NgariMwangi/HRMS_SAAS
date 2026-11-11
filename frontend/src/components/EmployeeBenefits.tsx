@@ -5,6 +5,7 @@ import { EmptyState, StatusPill, formatDate, formatMoney } from "../ui";
 
 type Draft = {
   benefit_type_id: string;
+  title: string;
   note: string;
   frequency: "RECURRING" | "ONE_OFF";
   amount: string;
@@ -19,6 +20,7 @@ function today(): string {
 
 const emptyDraft = (): Draft => ({
   benefit_type_id: "",
+  title: "",
   note: "",
   frequency: "ONE_OFF",
   amount: "",
@@ -30,6 +32,7 @@ const emptyDraft = (): Draft => ({
 function fromRow(row: EmployeeBenefit): Draft {
   return {
     benefit_type_id: row.benefit_type_id,
+    title: row.type_name,
     note: row.note ?? "",
     frequency: row.frequency,
     amount: row.amount,
@@ -42,7 +45,8 @@ function fromRow(row: EmployeeBenefit): Draft {
 function payload(draft: Draft) {
   const recurring = draft.frequency === "RECURRING";
   return {
-    benefit_type_id: draft.benefit_type_id,
+    benefit_type_id: draft.benefit_type_id || undefined,
+    title: draft.benefit_type_id ? undefined : draft.title.trim(),
     note: draft.note.trim() || null,
     frequency: draft.frequency,
     amount: draft.amount,
@@ -95,11 +99,10 @@ export function EmployeeBenefits({
 
   const activeTypes = types.filter((row) => row.is_active || row.id === draft.benefit_type_id);
 
-  function pickType(typeId: string) {
-    const kind = types.find((row) => row.id === typeId);
-    setDraft((current) => ({
-      ...current,
-      benefit_type_id: typeId,
+  function pickTitle(title: string) {
+    const kind = activeTypes.find(row => row.name.toLowerCase() === title.trim().toLowerCase());
+    setDraft(current => ({ ...current, title,
+      benefit_type_id: kind?.id ?? "",
       amount: current.amount || kind?.default_amount || "",
     }));
   }
@@ -191,7 +194,7 @@ export function EmployeeBenefits({
           <h3>Benefits</h3>
           <p>Commission, bonuses and other extra earnings. They are added to gross pay, so PAYE and statutory deductions apply.</p>
         </div>
-        {mode === "closed" && types.length ? (
+        {mode === "closed" ? (
           <button className="btn small" type="button" onClick={openAdd} style={{ flexShrink: 0 }}>Add benefit</button>
         ) : null}
       </div>
@@ -201,12 +204,10 @@ export function EmployeeBenefits({
           <div className="form-grid">
             <label>
               Benefit
-              <select required value={draft.benefit_type_id} onChange={(event) => pickType(event.target.value)}>
-                <option value="" disabled>Select…</option>
-                {activeTypes.map((row) => (
-                  <option key={row.id} value={row.id}>{row.name}</option>
-                ))}
-              </select>
+              <input required maxLength={100} list={`${employeeId}-benefit-titles`} value={draft.title} onChange={event => pickTitle(event.target.value)} placeholder="Choose an existing title or type a new one" />
+              <datalist id={`${employeeId}-benefit-titles`}>
+                {activeTypes.map(row => <option key={row.id} value={row.name} />)}
+              </datalist>
             </label>
             <label>
               How often
@@ -271,12 +272,7 @@ export function EmployeeBenefits({
 
       {error ? <p className="error" style={{ margin: "0.75rem 1.1rem 0" }}>{error}</p> : null}
 
-      {types.length === 0 ? (
-        <EmptyState
-          title="No benefit types yet"
-          note="Add types such as Commission, Bonus or Overtime under Payroll → Configuration first."
-        />
-      ) : rows.length === 0 ? (
+      {rows.length === 0 ? (
         <EmptyState title="No benefits" note="This person has no commission, bonus or other benefits." />
       ) : (
         <table className="org-table">

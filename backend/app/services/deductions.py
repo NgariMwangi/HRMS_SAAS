@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.api.org import branch_for_company, company_for_tenant
+from app.services.salary_item_types import resolve_type
 from app.models import (
     DeductionType,
     Employee,
@@ -248,7 +249,9 @@ async def _apply_deduction_fields(
         raise _bad("frequency must be RECURRING or ONE_OFF")
     if payload.status not in STATUSES:
         raise _bad("status must be ACTIVE or STOPPED")
-    kind = await session.get(DeductionType, payload.deduction_type_id)
+    if payload.deduction_type_id is None and payload.category not in CATEGORIES:
+        raise _bad("category must be PERSONAL or COMPANY")
+    kind = await resolve_type(session, DeductionType, employee.company_id, payload.deduction_type_id, payload.title, category=payload.category)
     if kind is None or kind.company_id != employee.company_id:
         raise _bad("Deduction type not found for this company")
     if creating and not kind.is_active:

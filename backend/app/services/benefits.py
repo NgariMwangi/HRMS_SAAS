@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.api.org import company_for_tenant
+from app.services.salary_item_types import resolve_type
 from app.models import BenefitType, Employee, EmployeeBenefit, PayrollPayslip, PayrollPayslipLine, PayrollRun
 
 FREQUENCIES = {"RECURRING", "ONE_OFF"}
@@ -153,7 +154,7 @@ async def _apply_benefit_fields(
         raise _bad("frequency must be RECURRING or ONE_OFF")
     if payload.status not in STATUSES:
         raise _bad("status must be ACTIVE or STOPPED")
-    kind = await session.get(BenefitType, payload.benefit_type_id)
+    kind = await resolve_type(session, BenefitType, employee.company_id, payload.benefit_type_id, payload.title)
     if kind is None or kind.company_id != employee.company_id:
         raise _bad("Benefit type not found for this company")
     if creating and not kind.is_active:

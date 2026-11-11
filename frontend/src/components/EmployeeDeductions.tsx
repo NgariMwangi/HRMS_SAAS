@@ -5,6 +5,8 @@ import { EmptyState, StatusPill, formatDate, formatMoney } from "../ui";
 
 type Draft = {
   deduction_type_id: string;
+  title: string;
+  category: string;
   frequency: "RECURRING" | "ONE_OFF";
   amount: string;
   start_date: string;
@@ -20,6 +22,8 @@ function today(): string {
 
 const emptyDraft = (): Draft => ({
   deduction_type_id: "",
+  title: "",
+  category: "PERSONAL",
   frequency: "RECURRING",
   amount: "",
   start_date: today(),
@@ -32,6 +36,8 @@ const emptyDraft = (): Draft => ({
 function fromRow(row: EmployeeDeduction): Draft {
   return {
     deduction_type_id: row.deduction_type_id,
+    title: row.type_name,
+    category: row.category,
     frequency: row.frequency,
     amount: row.amount,
     start_date: row.start_date,
@@ -45,7 +51,9 @@ function fromRow(row: EmployeeDeduction): Draft {
 function payload(draft: Draft) {
   const recurring = draft.frequency === "RECURRING";
   return {
-    deduction_type_id: draft.deduction_type_id,
+    deduction_type_id: draft.deduction_type_id || undefined,
+    title: draft.deduction_type_id ? undefined : draft.title.trim(),
+    category: draft.category,
     frequency: draft.frequency,
     amount: draft.amount,
     start_date: draft.start_date,
@@ -99,12 +107,12 @@ export function EmployeeDeductions({
 
   const activeTypes = types.filter((row) => row.is_active || row.id === draft.deduction_type_id);
 
-  function pickType(typeId: string) {
-    const kind = types.find((row) => row.id === typeId);
-    setDraft((current) => ({
-      ...current,
-      deduction_type_id: typeId,
+  function pickTitle(title: string) {
+    const kind = activeTypes.find(row => row.name.toLowerCase() === title.trim().toLowerCase());
+    setDraft(current => ({ ...current, title,
+      deduction_type_id: kind?.id ?? "",
       amount: current.amount || kind?.default_amount || "",
+      category: kind?.category ?? current.category,
     }));
   }
 
@@ -195,7 +203,7 @@ export function EmployeeDeductions({
           <h3>Other deductions</h3>
           <p>Loans, SACCO, HELB, welfare and other deductions taken from net pay after PAYE.</p>
         </div>
-        {mode === "closed" && types.length ? (
+        {mode === "closed" ? (
           <button className="btn small" type="button" onClick={openAdd} style={{ flexShrink: 0 }}>Add deduction</button>
         ) : null}
       </div>
@@ -205,15 +213,12 @@ export function EmployeeDeductions({
           <div className="form-grid">
             <label>
               Deduction
-              <select required value={draft.deduction_type_id} onChange={(event) => pickType(event.target.value)}>
-                <option value="" disabled>Select…</option>
-                {activeTypes.map((row) => (
-                  <option key={row.id} value={row.id}>
-                    {row.name} · {deductionCategoryLabel[row.category]}
-                  </option>
-                ))}
-              </select>
+              <input required maxLength={100} list={`${employeeId}-deduction-titles`} value={draft.title} onChange={event => pickTitle(event.target.value)} placeholder="Choose an existing title or type a new one" />
+              <datalist id={`${employeeId}-deduction-titles`}>
+                {activeTypes.map(row => <option key={row.id} value={row.name} />)}
+              </datalist>
             </label>
+            {!draft.deduction_type_id && <label>Category<select value={draft.category} onChange={event => setDraft({ ...draft, category: event.target.value })}><option value="PERSONAL">Personal</option><option value="COMPANY">Company scheme</option></select></label>}
             <label>
               How often
               <select
@@ -286,12 +291,7 @@ export function EmployeeDeductions({
 
       {error ? <p className="error" style={{ margin: "0.75rem 1.1rem 0" }}>{error}</p> : null}
 
-      {types.length === 0 ? (
-        <EmptyState
-          title="No deduction types yet"
-          note="Add types such as Staff loan, Sacco or Welfare Kit under Payroll → Configuration first."
-        />
-      ) : rows.length === 0 ? (
+      {rows.length === 0 ? (
         <EmptyState title="No other deductions" note="This person has no loans, SACCO or scheme deductions." />
       ) : (
         <table className="org-table">

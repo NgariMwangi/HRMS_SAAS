@@ -2,7 +2,7 @@ import uuid
 from datetime import date, datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, Field, field_serializer
+from pydantic import BaseModel, Field, field_serializer, model_validator
 
 from app.schemas.base import ApiModel
 
@@ -238,7 +238,9 @@ class DeductionEnrolResult(BaseModel):
 
 
 class EmployeeDeductionWrite(BaseModel):
-    deduction_type_id: uuid.UUID
+    deduction_type_id: uuid.UUID | None = None
+    title: str | None = Field(default=None, min_length=1, max_length=100)
+    category: str = "PERSONAL"
     frequency: str
     amount: Decimal = Field(gt=0)
     start_date: date
@@ -246,6 +248,16 @@ class EmployeeDeductionWrite(BaseModel):
     total_amount: Decimal | None = Field(default=None, gt=0)
     reference: str | None = Field(default=None, max_length=100)
     status: str = "ACTIVE"
+
+    @model_validator(mode="after")
+    def require_type_or_title(self):
+        if (self.deduction_type_id is None) == (self.title is None):
+            raise ValueError("Choose a deduction type or enter a new title")
+        if self.title is not None:
+            self.title = self.title.strip()
+            if not self.title:
+                raise ValueError("Enter a deduction title")
+        return self
 
 
 class EmployeeDeductionRead(PayrollMoneyModel):
@@ -289,13 +301,24 @@ class BenefitTypeRead(PayrollMoneyModel):
 
 
 class EmployeeBenefitWrite(BaseModel):
-    benefit_type_id: uuid.UUID
+    benefit_type_id: uuid.UUID | None = None
+    title: str | None = Field(default=None, min_length=1, max_length=100)
     note: str | None = Field(default=None, max_length=100)
     frequency: str
     amount: Decimal = Field(gt=0)
     start_date: date
     end_date: date | None = None
     status: str = "ACTIVE"
+
+    @model_validator(mode="after")
+    def require_type_or_title(self):
+        if (self.benefit_type_id is None) == (self.title is None):
+            raise ValueError("Choose a benefit type or enter a new title")
+        if self.title is not None:
+            self.title = self.title.strip()
+            if not self.title:
+                raise ValueError("Enter a benefit title")
+        return self
 
 
 class EmployeeBenefitRead(PayrollMoneyModel):

@@ -21,11 +21,6 @@ function thisMonth(): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
-function shiftMonth(value: string, offset: number): string {
-  const [year, month] = value.split("-").map(Number);
-  const date = new Date(Date.UTC(year, month - 1 + offset, 1));
-  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
-}
 
 export type PayrollScope = {
   token: string;
@@ -196,12 +191,10 @@ export function PayrollBoard({
       ) : (
         <>
             <form className="filters" onSubmit={createRun}>
-              <button className="btn ghost small" type="button" disabled={busy} onClick={() => selectMonth(shiftMonth(month, -1))}>Previous month</button>
               <label>
                 Payroll month
                 <input type="month" required value={month} disabled={busy} onChange={(event) => selectMonth(event.target.value)} />
               </label>
-              <button className="btn ghost small" type="button" disabled={busy} onClick={() => selectMonth(shiftMonth(month, 1))}>Next month</button>
               <label>Saved payrolls
                 <select value={open?.id ?? ""} disabled={busy || !runs.length} onChange={event => {
                   const selected = runs.find(run => run.id === event.target.value);

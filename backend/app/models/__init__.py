@@ -1,4 +1,5 @@
 from app.db.base import Base
+from app.models.leave_email import LeaveEmail
 from app.models.domains import CompanyDomain
 from app.models.google_challenge import GoogleChallenge
 from app.models import performance  # registers performance tables for migrations

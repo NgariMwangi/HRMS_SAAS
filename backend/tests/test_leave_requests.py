@@ -123,7 +123,10 @@ async def test_leave_request_paths_for_hr_employee_and_supervisor(client: AsyncC
         json={"decision": "APPROVED", "supervisor_employee_id": lead["id"]},
     )
     assert decided.status_code == 200, decided.text
-    assert decided.json()["status"] == "APPROVED"
+    assert decided.json()["status"] == "PENDING_HR"
+    final_hr = await client.post(f"/leave-requests/{decided.json()['id']}/hr-decision",
+        headers=headers_a, json={"decision": "APPROVED"})
+    assert final_hr.status_code == 200 and final_hr.json()["status"] == "APPROVED"
 
     self_hr = await client.post(
         "/leave-requests/self",

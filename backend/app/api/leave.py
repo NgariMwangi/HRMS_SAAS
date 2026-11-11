@@ -13,6 +13,7 @@ from app.models import Branch, Company, Employee, LeaveDecision, LeaveRequest, L
 from app.services.leave_balances import as_of_for_year, balance_for
 from app.services.access import has_permission, require_permission
 from app.schemas.leave import LeaveDecisionRead, LeaveRequestRead
+from app.services.leave_emails import queue as queue_emails
 
 OPEN_STATUSES = {"PENDING_SUPERVISOR", "PENDING_HR", "APPROVED"}
 HR_ACTIONS = {"APPROVE_NOW", "SEND_TO_SUPERVISOR"}
@@ -390,7 +391,7 @@ async def create_hr_request(
     if action == "SEND_TO_SUPERVISOR" and not await _has_supervisors(session, employee.id):
         raise _bad("This employee has no supervisor to approve the request")
     status_value = "APPROVED" if action == "APPROVE_NOW" else "PENDING_SUPERVISOR"
-    approval_mode = "HR_ONLY" if action == "APPROVE_NOW" else "SUPERVISOR_ONLY"
+    approval_mode = "HR_ONLY" if action == "APPROVE_NOW" else "SUPERVISOR_THEN_HR"
     row = await _create_request(
         session,
         employee=employee,
@@ -407,6 +408,9 @@ async def create_hr_request(
     )
     if action == "APPROVE_NOW":
         await _add_decision(session, row, step="HR", decision="APPROVED", note=None, user=user, actor_employee_id=None)
+    await queue_emails(session, row, "APPLIED")
+    if action == "APPROVE_NOW":
+        await queue_emails(session, row, "HR_DECISION", decision="APPROVED")
     return await _reload(session, row.id)
 
 
@@ -448,6 +452,7 @@ async def create_self_request(
         user=user,
         actor_employee_id=employee.id,
     )
+    await queue_emails(session, row, "APPLIED")
     return await _reload(session, row.id)
 
 
@@ -486,6 +491,7 @@ async def create_supervisor_request(
         user=user,
         actor_employee_id=supervisor.id,
     )
+    await queue_emails(session, row, "APPLIED")
     return await _reload(session, row.id)
 
 
@@ -515,12 +521,10 @@ async def decide_as_supervisor(
         user=user,
         actor_employee_id=supervisor_employee_id,
     )
-    if choice == "REJECTED":
-        request.status = "REJECTED"
-    elif request.approval_mode == "SUPERVISOR_THEN_HR":
-        request.status = "PENDING_HR"
-    else:
-        request.status = "APPROVED"
+    # Both recommendations go to HR/the workspace owner for the final response.
+    request.status = "PENDING_HR"
+    await queue_emails(session, request, "SUPERVISOR_DECISION", decision=choice,
+        actor_employee_id=supervisor_employee_id, note=note)
     await session.flush()
     return await _reload(session, request.id)
 
@@ -540,6 +544,7 @@ async def decide_as_hr(
         raise _bad("This request is no longer waiting for HR")
     await _add_decision(session, request, step="HR", decision=choice, note=note, user=user, actor_employee_id=None)
     request.status = "APPROVED" if choice == "APPROVED" else "REJECTED"
+    await queue_emails(session, request, "HR_DECISION", decision=choice, note=note)
     await session.flush()
     return await _reload(session, request.id)
 

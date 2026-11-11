@@ -1,4 +1,6 @@
 from contextlib import asynccontextmanager
+from contextlib import suppress
+import asyncio
 from collections.abc import AsyncIterator
 
 from fastapi import FastAPI
@@ -15,8 +17,15 @@ from app.services.domains import backfill_automatic
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     get_engine()
     await backfill_automatic()
-    yield
-    await dispose_engine()
+    from app.services.leave_emails import serve
+    email_worker = asyncio.create_task(serve())
+    try:
+        yield
+    finally:
+        email_worker.cancel()
+        with suppress(asyncio.CancelledError):
+            await email_worker
+        await dispose_engine()
 
 
 def create_app() -> FastAPI:

@@ -225,7 +225,7 @@ export default function TenantShell() {
               <Avatar name={company?.name ?? tenant?.name ?? "Company"} size="sm" />
               <div style={{ minWidth: 0, flex: 1 }}>
                 <strong>{company?.name ?? tenant?.name ?? "Workspace"}</strong>
-                <span>{branch ? `${branch.name} · ${branch.code}` : "Select a branch"}</span>
+                <span>{branch ? branch.name : "Select a branch"}</span>
               </div>
               <IconChevron />
             </button>
@@ -251,7 +251,7 @@ export default function TenantShell() {
                     type="button"
                     onClick={() => pickBranch(row.id)}
                   >
-                    {row.name} · {row.code}
+                    {row.name}
                   </button>
                 ))}
                 {hasPermission("organization.manage") ? <><NavLink className="menu-item" to="/app/companies">Manage companies</NavLink><NavLink className="menu-item" to="/app/branches">Manage branches</NavLink></> : null}

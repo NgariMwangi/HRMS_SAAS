@@ -402,11 +402,11 @@ export default function AdminTenantDetail() {
               <EmptyState title="No matching branches" note={`Nothing matched “${listQuery.trim()}”.`} />
             ) : (
             <table>
-              <thead><tr><th>Branch</th><th>Company</th><th>Code</th><th>Status</th><th></th></tr></thead>
+              <thead><tr><th>Branch</th><th>Company</th><th>Status</th><th></th></tr></thead>
               <tbody>
                 {visibleBranches.map((row) => (
                   <tr key={row.id}>
-                    <td colSpan={editing === row.id ? 5 : undefined} data-label={editing === row.id ? undefined : "Branch"}>
+                    <td colSpan={editing === row.id ? 4 : undefined} data-label={editing === row.id ? undefined : "Branch"}>
                       {editing === row.id ? (
                         <BranchForm
                           initial={row}
@@ -421,7 +421,6 @@ export default function AdminTenantDetail() {
                     {editing === row.id ? null : (
                       <>
                         <td data-label="Company">{companiesById.get(row.company_id)?.name ?? "—"}</td>
-                        <td data-label="Code">{row.code}</td>
                         <td data-label="Status"><StatusPill value={row.status} /></td>
                         <td className="row-actions">
                           <button className="btn ghost small" type="button" onClick={() => setEditing(row.id)}>Edit</button>

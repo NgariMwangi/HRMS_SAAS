@@ -297,13 +297,12 @@ export default function CompaniesPage() {
                 ) : (
                   <table>
                     <thead>
-                      <tr><th>Branch</th><th>Code</th><th>Status</th></tr>
+                      <tr><th>Branch</th><th>Status</th></tr>
                     </thead>
                     <tbody>
                       {selectedBranches.map((row) => (
                         <tr key={row.id}>
                           <td data-label="Branch">{row.name}</td>
-                          <td data-label="Code">{row.code}</td>
                           <td data-label="Status"><StatusPill value={row.status} /></td>
                         </tr>
                       ))}

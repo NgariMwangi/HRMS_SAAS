@@ -173,7 +173,6 @@ export default function AdminTenantDetail() {
                 <thead>
                   <tr>
                     <th>Branch</th>
-                    <th>Code</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -183,7 +182,6 @@ export default function AdminTenantDetail() {
                       <td>
                         {branch.name} <StatusPill value={branch.status} />
                       </td>
-                      <td>{branch.code}</td>
                       <td>
                         <button
                           type="button"

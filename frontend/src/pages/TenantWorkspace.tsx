@@ -89,12 +89,11 @@ export default function TenantWorkspace() {
             <EmptyState title="No branches" note="Head office and other sites will list here." />
           ) : (
           <table>
-            <thead><tr><th>Name</th><th>Code</th><th>Status</th></tr></thead>
+            <thead><tr><th>Name</th><th>Status</th></tr></thead>
             <tbody>
               {branches.map((branch) => (
                 <tr key={branch.id}>
                   <td>{branch.name}</td>
-                  <td>{branch.code}</td>
                   <td><StatusPill value={branch.status} /></td>
                 </tr>
               ))}

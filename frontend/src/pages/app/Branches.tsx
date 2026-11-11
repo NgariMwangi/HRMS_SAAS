@@ -229,7 +229,7 @@ export default function BranchesPage() {
                   <tr key={row.id} className={row.id === branch?.id ? "is-active" : ""}>
                     <td data-label="Branch">
                       <strong>{row.name}</strong>
-                      <div className="muted">{row.code}{row.timezone ? ` · ${row.timezone}` : ""}</div>
+                      {row.timezone ? <div className="muted">{row.timezone}</div> : null}
                     </td>
                     <td data-label="Country">{countryById.get(row.country_id ?? "")?.name ?? "—"}</td>
                     <td data-label="City">{row.city ?? "—"}</td>

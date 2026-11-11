@@ -83,7 +83,6 @@ export default function TenantWorkspace() {
             <thead>
               <tr>
                 <th>Name</th>
-                <th>Code</th>
                 <th>Status</th>
               </tr>
             </thead>
@@ -91,7 +90,6 @@ export default function TenantWorkspace() {
               {branches.map((branch) => (
                 <tr key={branch.id}>
                   <td>{branch.name}</td>
-                  <td>{branch.code}</td>
                   <td>
                     <StatusPill value={branch.status} />
                   </td>

@@ -133,7 +133,7 @@ export default function Dashboard() {
                       <li key={row.id} className={row.id === branch?.id ? "dash-row is-current" : "dash-row"}>
                         <PersonCell
                           name={row.name}
-                          email={[owner?.name, row.code].filter(Boolean).join(" · ") || undefined}
+                          email={owner?.name}
                         />
                         <StatusPill value={row.status} />
                       </li>

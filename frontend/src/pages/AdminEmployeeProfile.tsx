@@ -144,7 +144,7 @@ export default function AdminEmployeeProfile() {
             <div><dt>Phone</dt><dd>{employee.phone ?? "—"}</dd></div>
             <div><dt>Second phone</dt><dd>{employee.other_phone ?? "—"}</dd></div>
             <div><dt>Company</dt><dd>{company?.name ?? "—"}</dd></div>
-            <div><dt>Branch</dt><dd>{branch ? `${branch.name} · ${branch.code}` : "—"}</dd></div>
+            <div><dt>Branch</dt><dd>{branch ? branch.name : "—"}</dd></div>
             <div><dt>Department</dt><dd>{department?.name ?? "—"}</dd></div>
             <div><dt>Job title</dt><dd>{title?.name ?? "—"}</dd></div>
             <div><dt>Employment type</dt><dd>{employee.employment_type.replaceAll("_", " ").toLowerCase()}</dd></div>

@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { CSSProperties, useEffect, useState } from "react";
+import { contrast } from "./CompanyBranding";
 import { api, apiDownload } from "../api";
 import { formatDate, TableSkeleton } from "../ui";
 import "../payslip.css";
 
 type Line = { id: string; name: string; amount: string };
 type Document = { id: string; reference: string; filename: string; employee_name: string; employee_number: string;
+  theme_color?: string; logo_data_url?: string | null;
   employee_primary_email?: string | null; pin_number?: string | null; shif_no?: string | null; nssf_no?: string | null;
   company_name: string; company_legal_name: string | null; company_email: string | null; company_phone: string | null;
   branch_name: string; period_start: string; period_end: string; status: string; currency_code: string; decimal_places: number;
@@ -62,8 +64,8 @@ export default function PayslipDocument({ path, token }: { path: string; token: 
       <small>{data.employee_primary_email ? `Work email: ${data.employee_primary_email}` : "Add the employee's work email to enable sending."}</small>
       {emailNotice && <p role="status">{emailNotice}</p>}
     </div>}
-    {!data ? !error && <TableSkeleton rows={6} /> : <article className="payslip-paper">
-      <header className="payslip-heading"><div className="payslip-brand"><span className="payslip-monogram" aria-hidden="true">{data.company_name.split(/\s+/).filter(Boolean).slice(0, 2).map(word => word[0]).join("")}</span><div><h2>{data.company_name}</h2>{data.company_legal_name && data.company_legal_name !== data.company_name && <p>{data.company_legal_name}</p>}<p>{[data.company_email, data.company_phone].filter(Boolean).join(" · ")}</p></div></div><div className="payslip-title"><span>PAYSLIP</span><small>{data.reference}</small></div></header>
+    {!data ? !error && <TableSkeleton rows={6} /> : <article className="payslip-paper" style={{ "--payslip-accent": data.theme_color ?? "#087e8b", "--payslip-ink": contrast(data.theme_color ?? "#087e8b") } as CSSProperties}>
+      <header className="payslip-heading"><div className={`payslip-brand${data.logo_data_url ? " has-logo" : ""}`}>{data.logo_data_url ? <img className="payslip-logo" src={data.logo_data_url} alt={`${data.company_name} logo`} /> : <span className="payslip-monogram" aria-hidden="true">{data.company_name.split(/\s+/).filter(Boolean).slice(0, 2).map(word => word[0]).join("")}</span>}<div><h2>{data.company_name}</h2>{data.company_legal_name && data.company_legal_name !== data.company_name && <p>{data.company_legal_name}</p>}<p>{[data.company_email, data.company_phone].filter(Boolean).join(" · ")}</p></div></div><div className="payslip-title"><span>PAYSLIP</span><small>{data.reference}</small></div></header>
       {data.status !== "APPROVED" && <p className="payslip-draft">DRAFT — Not approved. For internal review only.</p>}
       <dl className="payslip-details"><div><dt>Employee</dt><dd>{data.employee_name}</dd></div><div><dt>Employee number</dt><dd>{data.employee_number}</dd></div><div><dt>Pay period</dt><dd>{formatDate(data.period_start)} – {formatDate(data.period_end)}</dd></div><div><dt>Branch</dt><dd>{data.branch_name}</dd></div><div><dt>Currency</dt><dd>{data.currency_code}</dd></div><div><dt>PIN number</dt><dd>{data.pin_number ?? ""}</dd></div><div><dt>SHIF no.</dt><dd>{data.shif_no ?? ""}</dd></div><div><dt>NSSF no.</dt><dd>{data.nssf_no ?? ""}</dd></div></dl>
       {lines("Earnings", "01", data.earnings, "Gross pay", data.gross)}

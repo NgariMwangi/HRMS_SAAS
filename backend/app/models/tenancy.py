@@ -92,6 +92,8 @@ class Company(Base):
     email: Mapped[str | None] = mapped_column(String(255))
     phone: Mapped[str | None] = mapped_column(String(50))
     website: Mapped[str | None] = mapped_column(String(255))
+    theme_color: Mapped[str] = mapped_column(String(7), nullable=False, default="#4F46E5", server_default="#4F46E5")
+    logo_data_url: Mapped[str | None] = mapped_column(Text)
 
     status: Mapped[str] = mapped_column(String(30), default="ACTIVE", nullable=False)
 

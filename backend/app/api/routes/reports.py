@@ -65,6 +65,18 @@ async def export_report(kind: str, filters: dict = Depends(selection), session: 
     return exported(await generate(session, user.tenant_id, kind, filters, await permissions_for(session, user)))
 
 
+async def pdf_export(report):
+    from app.services.report_pdf import render
+    from fastapi.concurrency import run_in_threadpool
+    content = await run_in_threadpool(render, report)
+    return Response(content, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{report["key"]}-{report["end_on"]}.pdf"', "Cache-Control": "no-store"})
+
+
+@router.get("/{kind}/pdf")
+async def export_pdf(kind: str, filters: dict = Depends(selection), session: AsyncSession = Depends(get_tenant_db), user: User = Depends(get_current_user)):
+    return await pdf_export(await generate(session, user.tenant_id, kind, filters, await permissions_for(session, user)))
+
+
 @router.get("/{kind}")
 async def report(kind: str, response: Response, filters: dict = Depends(selection), session: AsyncSession = Depends(get_tenant_db), user: User = Depends(get_current_user)):
     no_cache(response)
@@ -82,6 +94,11 @@ async def platform_catalog(tenant_id: uuid.UUID, company_id: uuid.UUID, response
 @platform_router.get("/{kind}/export")
 async def platform_export(tenant_id: uuid.UUID, kind: str, filters: dict = Depends(selection), session: AsyncSession = Depends(get_platform_db), _: PlatformAdmin = Depends(get_current_admin)):
     return exported(await generate(session, tenant_id, kind, filters))
+
+
+@platform_router.get("/{kind}/pdf")
+async def platform_pdf(tenant_id: uuid.UUID, kind: str, filters: dict = Depends(selection), session: AsyncSession = Depends(get_platform_db), _: PlatformAdmin = Depends(get_current_admin)):
+    return await pdf_export(await generate(session, tenant_id, kind, filters))
 
 
 @platform_router.get("/{kind}")

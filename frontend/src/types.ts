@@ -55,6 +55,8 @@ export type Branch = {
 };
 
 export type Company = {
+  theme_color?: string;
+  logo_data_url?: string | null;
   id: string;
   tenant_id: string;
   name: string;

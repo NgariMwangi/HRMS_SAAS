@@ -1,3 +1,4 @@
+import { CompanyLogo } from "../components/CompanyBranding";
 import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useWorkspace } from "../context/WorkspaceContext";
@@ -208,8 +209,8 @@ export default function TenantShell() {
       <aside className="sidebar">
         <div className="sidebar-head">
           <div className="brand-row">
-            <span className="mark">H</span>
-            <span>HRMS</span>
+            <CompanyLogo company={company} />
+            {!company?.logo_data_url && <span>{company?.name ?? "HRMS"}</span>}
             <button
               className="rail-toggle"
               type="button"

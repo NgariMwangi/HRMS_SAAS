@@ -1,4 +1,5 @@
 import { useCompanyDomain } from "./CompanyDomainContext";
+import { CompanyTheme } from "../components/CompanyBranding";
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { api, tenantSession, tenantToken } from "../api";
@@ -205,6 +206,7 @@ export function WorkspaceProvider({ children, employeePortal = false }: { childr
 
   return (
     <WorkspaceContext.Provider value={value}>
+      <CompanyTheme company={value.company} />
       {children}
       {toast ? <div className="toast">{toast}</div> : null}
     </WorkspaceContext.Provider>

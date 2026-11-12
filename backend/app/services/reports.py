@@ -185,7 +185,7 @@ async def generate(session, tenant_id, company_id, kind, start_on, end_on, branc
 
     if len(rows) > MAX_ROWS:
         fail("This selection has more than 50,000 records. Narrow the dates, branch, department or search.", 422)
-    return dict(key=kind, title=CATALOG[kind]["title"], company=company.name, branch=branch_name(branch_id) if branch_id else "All branches", department=department_name(department_id) if department_id else "All departments", start_on=start_on, end_on=end_on, generated_at=datetime.now(timezone.utc).isoformat(), note=note, selected_status=selected_status or "ALL", statuses=statuses, summary=summaries, breakdowns=breakdowns, columns=columns, rows=rows, total_rows=len(rows))
+    return dict(key=kind, title=CATALOG[kind]["title"], company=company.name, theme_color=company.theme_color, logo_data_url=company.logo_data_url, branch=branch_name(branch_id) if branch_id else "All branches", department=department_name(department_id) if department_id else "All departments", start_on=start_on, end_on=end_on, generated_at=datetime.now(timezone.utc).isoformat(), note=note, selected_status=selected_status or "ALL", statuses=statuses, summary=summaries, breakdowns=breakdowns, columns=columns, rows=rows, total_rows=len(rows))
 
 
 def csv_bytes(report):

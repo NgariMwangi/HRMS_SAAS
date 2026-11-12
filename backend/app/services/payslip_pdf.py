@@ -34,6 +34,8 @@ def fonts():
 
 def render(data):
     fonts()
+    from app.services.branding import logo_flowable
+    accent = colors.HexColor(data.get("theme_color") or "#087e8b")
     output = BytesIO()
     width = A4[0] - 34 * mm
     styles = {
@@ -78,16 +80,19 @@ def render(data):
         topMargin=20*mm, bottomMargin=20*mm, title=f"Payslip {data['reference']}", author=data["company_name"],
         subject=f"{data['employee_name']} | {data['period_start']} to {data['period_end']}", pageCompression=1)
     company = [p(data["company_name"], "company")]
+    logo = logo_flowable(data.get("logo_data_url"), max_width=175, max_height=38)
+    if logo:
+        company = [logo, Spacer(1, 8), *company]
     if data.get("company_legal_name") and data["company_legal_name"] != data["company_name"]:
         company += [Spacer(1, 5), p(data["company_legal_name"], "small")]
     for key in ("company_email", "company_phone"):
         if data.get(key):
             company += [Spacer(1, 3), p(data[key], "small")]
     initials = "".join(word[0] for word in data["company_name"].split()[:2])
-    monogram_style = ParagraphStyle("monogram", parent=styles["total"], textColor=TEAL, fontSize=12, leading=16)
+    monogram_style = ParagraphStyle("monogram", parent=styles["total"], textColor=accent, fontSize=12, leading=16)
     monogram = Table([[Paragraph(escape(initials), monogram_style)]], colWidths=[32], rowHeights=[32])
     monogram.setStyle(TableStyle([("BACKGROUND", (0,0),(-1,-1), colors.HexColor("#e9f5f5")), ("VALIGN",(0,0),(-1,-1),"MIDDLE"), ("LEFTPADDING",(0,0),(-1,-1),5)]))
-    brand = Table([[monogram, company]], colWidths=[42, width*.65-42], hAlign="LEFT")
+    brand = Table([[company]] if logo else [[monogram, company]], colWidths=[width*.65] if logo else [42, width*.65-42], hAlign="LEFT")
     brand.setStyle(TableStyle([("VALIGN",(0,0),(-1,-1),"TOP"), ("LEFTPADDING",(0,0),(-1,-1),0), ("RIGHTPADDING",(0,0),(-1,-1),0), ("TOPPADDING",(0,0),(-1,-1),0), ("BOTTOMPADDING",(0,0),(-1,-1),0)]))
     title = [p("PAYSLIP", "title"), Spacer(1, 5), p(data["reference"], "right")]
     header = Table([[brand, title]], colWidths=[width*.65, width*.35], hAlign="LEFT")
@@ -109,16 +114,20 @@ def render(data):
         taxable = Table([[p("Taxable pay", "small"), p(f"{data['currency_code']} {cash(data['taxable'])}", "smallRight")]], colWidths=[width*.6, width*.4], hAlign="LEFT")
         taxable.setStyle(TableStyle([("LEFTPADDING",(0,0),(-1,-1),0), ("RIGHTPADDING",(0,0),(-1,-1),0), ("TOPPADDING",(0,0),(-1,-1),0), ("BOTTOMPADDING",(0,0),(-1,-1),0)]))
         story += [Spacer(1, 9), taxable]
-    net_style = ParagraphStyle("net", parent=styles["title"], textColor=colors.white, fontSize=17, leading=22)
-    net_label = ParagraphStyle("netLabel", parent=styles["body"], textColor=colors.white, fontName="PayslipBold")
+    def luminance(channel):
+        return channel / 12.92 if channel <= .04045 else ((channel + .055) / 1.055) ** 2.4
+    light = .2126*luminance(accent.red) + .7152*luminance(accent.green) + .0722*luminance(accent.blue)
+    ink = colors.white if light < .179 else colors.black
+    net_style = ParagraphStyle("net", parent=styles["title"], textColor=ink, fontSize=17, leading=22)
+    net_label = ParagraphStyle("netLabel", parent=styles["body"], textColor=ink, fontName="PayslipBold")
     net = Table([[Paragraph("NET PAY", net_label), Paragraph(escape(f"{data['currency_code']} {cash(data['net'])}"), net_style)]], colWidths=[width*.43, width*.57], hAlign="LEFT")
-    net.setStyle(TableStyle([("BACKGROUND",(0,0),(-1,-1),NAVY), ("VALIGN",(0,0),(-1,-1),"MIDDLE"),
+    net.setStyle(TableStyle([("BACKGROUND",(0,0),(-1,-1),accent), ("VALIGN",(0,0),(-1,-1),"MIDDLE"),
         ("TOPPADDING",(0,0),(-1,-1),11), ("BOTTOMPADDING",(0,0),(-1,-1),11),
         ("LEFTPADDING",(0,0),(-1,-1),14), ("RIGHTPADDING",(0,0),(-1,-1),14)]))
     story += [Spacer(1, 16), KeepTogether([net])]
     def page(canvas, document):
         canvas.saveState()
-        canvas.setStrokeColor(TEAL); canvas.setLineWidth(3)
+        canvas.setStrokeColor(accent); canvas.setLineWidth(3)
         canvas.line(17*mm, A4[1]-12*mm, A4[0]-17*mm, A4[1]-12*mm)
         if document.page > 1:
             canvas.setFont("Payslip", 7); canvas.setFillColor(MUTED)

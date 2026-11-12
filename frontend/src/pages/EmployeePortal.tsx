@@ -1,3 +1,4 @@
+import { CompanyLogo } from "../components/CompanyBranding";
 import PayslipDocument from "../components/PayslipDocument";
 import { appraisalNoticePath } from "../performanceNavigation";
 import { FormEvent, useEffect, useState } from "react";
@@ -57,7 +58,7 @@ export default function EmployeePortal() {
   const allowed = navigation.filter(item => !item[3] || has(item[3]));
   const current = allowed.find(item => item[0] === section);
   return <div className="employee-portal">
-    <aside className="portal-sidebar no-print"><Link to="/employee" className="portal-brand"><span className="mark">H</span><span>HRMS<small>Employee portal</small></span></Link>
+    <aside className="portal-sidebar no-print"><Link to="/employee" className="portal-brand"><CompanyLogo company={company} /><span>{!company?.logo_data_url && (company?.name ?? "HRMS")}<small>Employee portal</small></span></Link>
       <div className="portal-company">{profile.company_name}<small>{profile.branch_name}</small></div>
       <nav aria-label="Employee portal">{allowed.map(([path, title]) => <NavLink end key={path} to={`/employee${path ? `/${path}` : ""}`}><span aria-hidden="true"><PortalIcon path={path} /></span>{title}</NavLink>)}</nav>
       {user.role !== "EMPLOYEE" && <Link className="quiet-link" to="/app">Open HR workspace</Link>}

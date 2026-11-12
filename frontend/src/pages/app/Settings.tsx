@@ -1,4 +1,5 @@
 import CompanyDomains from "../../components/CompanyDomains";
+import BrandingSettings from "../../components/BrandingSettings";
 import RolesSettings from "../../components/RolesSettings";
 import { FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -9,7 +10,7 @@ import type { Company, DocumentCategory } from "../../types";
 import { AuditLogs } from "../../components/AuditLogs";
 import { Card, FormSkeleton, PageHeader, StatusPill } from "../../ui";
 
-const sections = ["Company", "Domains", "Documents", "Roles", "Localisation", "Notifications", "Audit log"];
+const sections = ["Company", "Branding", "Domains", "Documents", "Roles", "Localisation", "Notifications", "Audit log"];
 
 function blankToNull(value: string): string | null {
   const trimmed = value.trim();
@@ -123,6 +124,8 @@ export default function SettingsPage() {
         </form>
         )
       ) : null}
+
+      {section === "Branding" && company ? <Card title="Company branding" padded><BrandingSettings key={company.id} company={company} token={token} canManage={canManageOrg} onSaved={async () => { await reloadOrg({ companyId: company.id }); notify("Company branding saved."); }} /></Card> : null}
 
       {section === "Documents" ? (
         <Card title="Document categories">

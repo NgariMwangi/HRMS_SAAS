@@ -1,6 +1,7 @@
 import { useCompanyDomain } from "../context/CompanyDomainContext";
 import { ReactNode } from "react";
 import { ThemeToggle } from "../theme";
+import { CompanyLogo } from "../components/CompanyBranding";
 
 export default function AuthLayout({
   children,
@@ -17,8 +18,8 @@ export default function AuthLayout({
       </div>
       <aside className="auth-aside">
         <div className="brand-row">
-          <span className="mark">H</span>
-          <span>{company?.company_name ?? "HRMS"}</span>
+          <CompanyLogo company={company} />
+          {!company?.logo_data_url && <span>{company?.company_name ?? "HRMS"}</span>}
         </div>
         <div>
           <h2>{company ? `Welcome to ${company.company_name}` : kicker}</h2>
@@ -43,8 +44,8 @@ export default function AuthLayout({
       <main className="auth-main">
         <div className="auth-wrap">
           <div className="auth-top">
-            <span className="mark">H</span>
-            <span>{company?.company_name ?? "HRMS"}</span>
+            <CompanyLogo company={company} />
+            {!company?.logo_data_url && <span>{company?.company_name ?? "HRMS"}</span>}
           </div>
           {children}
         </div>

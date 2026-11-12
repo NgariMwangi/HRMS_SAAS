@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
+import { brandVariables, CompanyLogo } from "./CompanyBranding";
 import { Link } from "react-router-dom";
 import { api, apiDownload } from "../api";
 import { Card, EmptyState, formatDate, formatDateTime, Kpi, PageHeader, StatusPill, TableSkeleton } from "../ui";
@@ -10,7 +11,7 @@ type Catalog = { company: string; reports: { key: string; title: string; descrip
 type Column = { key: string; label: string; kind: string };
 type Row = Record<string, string | number | null>;
 type Breakdown = { title: string; columns: Column[]; rows: Row[] };
-type Report = { key: string; title: string; company: string; branch: string; department: string; start_on: string; end_on: string; generated_at: string; note: string; selected_status: string; statuses: string[]; summary: { label: string; value: number | string }[]; breakdowns: Breakdown[]; columns: Column[]; rows: Row[]; total_rows: number; page: number; page_size: number };
+type Report = { key: string; title: string; company: string; theme_color?: string; logo_data_url?: string | null; branch: string; department: string; start_on: string; end_on: string; generated_at: string; note: string; selected_status: string; statuses: string[]; summary: { label: string; value: number | string }[]; breakdowns: Breakdown[]; columns: Column[]; rows: Row[]; total_rows: number; page: number; page_size: number };
 type Filters = { branch_id: string; department_id: string; start_on: string; end_on: string; status: string; q: string };
 const statusOptions: Record<string, string[]> = { headcount: ["ACTIVE", "SUSPENDED", "TERMINATED"], payroll: ["APPROVED", "DRAFT"], attendance: ["PRESENT", "LATE", "ABSENT", "ON_LEAVE"], leave: ["PENDING_SUPERVISOR", "PENDING_HR", "APPROVED", "REJECTED", "CANCELLED"], movement: ["HIRED", "REHIRED", "SUSPENDED", "REINSTATED", "TERMINATED", "ROLE_CHANGED", "EXTENDED"] };
 const label = (value: string) => value.toLowerCase().replace(/_/g, " ").replace(/^./, c => c.toUpperCase());
@@ -62,7 +63,11 @@ export default function GeneralReports({ companyId, token, apiBase = "", kind, s
     setError(""); setExporting(true);
     try { await apiDownload(`${base}/${kind}/export?${query}`, token, `${kind}-${applied.end_on}.csv`); } catch (e) { setError((e as Error).message); } finally { setExporting(false); }
   }
-  return <div className="general-reports">
+  async function exportPdf() {
+    setError(""); setExporting(true);
+    try { await apiDownload(`${base}/${kind}/pdf?${query}`, token, `${kind}-${applied.end_on}.pdf`); } catch (e) { setError((e as Error).message); } finally { setExporting(false); }
+  }
+  return <div className="general-reports" style={report ? brandVariables(report.theme_color) : undefined}>
     {kind && <div>{reportHref ? <Link className="btn small ghost" to={reportHref()}>← All reports</Link> : <button className="btn small ghost" onClick={() => selectReport()}>← All reports</button>}</div>}
     <PageHeader title={kind ? meta?.title || "Report" : "General reports"} description={meta?.description || "Choose a report to explore your company's records."} actions={kind && report ? <><button className="btn ghost" type="button" onClick={() => setRefresh(v => v + 1)} disabled={loading}>Refresh</button><button className="btn" type="button" disabled={exporting || !report.total_rows || loading} onClick={() => void exportCsv()}>{exporting ? "Exporting…" : "Export CSV"}</button></> : undefined} />
     {error && <div className="error" role="alert">{error} <button className="btn small ghost" onClick={() => setRefresh(v => v + 1)}>Retry</button></div>}
@@ -77,7 +82,7 @@ export default function GeneralReports({ companyId, token, apiBase = "", kind, s
         <div className="general-report-filter-actions"><div className="actions">{kind !== "headcount" && <label className="general-report-period"><span className="sr-only">Set report period</span><select defaultValue="" onChange={e => { preset(e.target.value); e.target.value = ""; }}><option value="" disabled>Quick date range</option><option value="month">This month</option><option value="last-month">Last month</option><option value="quarter">This quarter</option><option value="year">This year</option></select></label>}<button className="btn" disabled={loading}>Apply filters</button><button className="btn ghost" type="button" disabled={loading} onClick={() => { const values = defaults(kind); setDraft(values); setApplied(values); setPage(1); setRefresh(v => v + 1); }}>Reset</button></div><small>{kind === "headcount" ? "Current records. No historical date filter." : "Summaries and exports use the applied filters."}</small></div>
       </form></Card>
       {loading ? <TableSkeleton rows={6} cols={6} /> : report && <>
-        <div className="general-report-context"><span><strong>{report.company}</strong> · {report.branch} · {report.department}</span><span>{kind === "headcount" ? "Current snapshot" : `${formatDate(report.start_on)} – ${formatDate(report.end_on)}`}</span><small>Generated {formatDateTime(report.generated_at)}</small></div>
+        <div className="general-report-context"><CompanyLogo company={{ name: report.company, logo_data_url: report.logo_data_url }} /><span><strong>{report.company}</strong> · {report.branch} · {report.department}</span><span>{kind === "headcount" ? "Current snapshot" : `${formatDate(report.start_on)} – ${formatDate(report.end_on)}`}</span><small>Generated {formatDateTime(report.generated_at)}</small><button type="button" className="btn ghost small" disabled={exporting || loading} onClick={() => void exportPdf()}>{exporting ? "Preparing…" : "Download PDF"}</button></div>
         <div className="general-report-kpis">{report.summary.map(m => <Kpi key={m.label} label={m.label} value={exactDecimal(m.value)} />)}</div>
         <p className="general-report-note">{report.note}</p>
         {!!report.total_rows && <div className="general-report-breakdowns">{report.breakdowns.map(b => <Card key={b.title} title={b.title}>{b.columns.length === 2 ? <div className="general-report-bars">{b.rows.map((r, index) => <div key={index}><span>{cell(r[b.columns[0].key], b.columns[0])}</span><progress aria-label={String(r[b.columns[0].key])} value={Number(r[b.columns[1].key])} max={Math.max(1, ...b.rows.map(row => Number(row[b.columns[1].key])))} /><strong>{r[b.columns[1].key]}</strong></div>)}</div> : table(b.columns, b.rows, b.title)}</Card>)}</div>}

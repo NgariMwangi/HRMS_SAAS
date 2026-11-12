@@ -88,9 +88,11 @@ def require_employment_period(
     employment_type: str,
     date_joined: date | None,
     date_ended: date | None,
+    *,
+    allow_incomplete: bool = False,
 ) -> None:
     if employment_type in PERIOD_EMPLOYMENT_TYPES:
-        if date_joined is None or date_ended is None:
+        if not allow_incomplete and (date_joined is None or date_ended is None):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Intern and probation records need a start date and an end date",

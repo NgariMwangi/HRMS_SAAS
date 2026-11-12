@@ -351,6 +351,8 @@ async def update_employee(
         employment_type,
         updates["date_joined"] if "date_joined" in updates else employee.date_joined,
         updates["date_ended"] if "date_ended" in updates else employee.date_ended,
+        allow_incomplete=employee.employment_type in {"INTERN", "PROBATION"}
+            and (employee.date_joined is None or employee.date_ended is None),
     )
     if "branch_id" in updates and updates["branch_id"] is not None:
         await branch_for_company(session, updates["branch_id"], employee.company_id)

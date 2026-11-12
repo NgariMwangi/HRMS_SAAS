@@ -155,6 +155,7 @@ export default function EmployeeCreate() {
   const [employeeId, setEmployeeId] = useState(routeId ?? params.get("employee") ?? "");
   const [employeeNumber, setEmployeeNumber] = useState("");
   const [companyId, setCompanyId] = useState(company?.id ?? "");
+  const [incompletePeriod, setIncompletePeriod] = useState(false);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [titles, setTitles] = useState<JobTitle[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -201,6 +202,7 @@ export default function EmployeeCreate() {
         setEmployeeId(row.id);
         setEmployeeNumber(row.employee_number);
         setCompanyId(row.company_id);
+        setIncompletePeriod(REQUIRED_PERIOD_TYPES.has(row.employment_type) && (!row.date_joined || !row.date_ended));
         setForm(fromEmployee(row, branch?.id ?? ""));
         setError(null);
         setPhotoSaved(row.has_photo);
@@ -265,7 +267,7 @@ export default function EmployeeCreate() {
       return nextOfKinError(kin);
     }
     if (stepIndex === 2 && END_DATE_TYPES.has(form.employment_type)) {
-      if (REQUIRED_PERIOD_TYPES.has(form.employment_type) && (!form.date_joined || !form.date_ended)) {
+      if (REQUIRED_PERIOD_TYPES.has(form.employment_type) && !incompletePeriod && (!form.date_joined || !form.date_ended)) {
         return "Start date and end date are required for intern and probation.";
       }
       if (form.date_ended && form.date_joined && form.date_ended < form.date_joined) {
@@ -313,6 +315,7 @@ export default function EmployeeCreate() {
       navigate(`/app/people/new?employee=${saved.id}`, { replace: true });
     }
 
+    if (saved) setIncompletePeriod(REQUIRED_PERIOD_TYPES.has(saved.employment_type) && (!saved.date_joined || !saved.date_ended));
     const id = saved?.id ?? employeeId;
     if (stepIndex === 0 && photoFile && id) {
       await apiUpload<Employee>(`/employees/${id}/photo`, photoFile, token);
@@ -538,7 +541,7 @@ export default function EmployeeCreate() {
                 <label>End date<input type="date" min={form.date_joined || undefined} {...bind("date_ended")} /></label>
                 <p className="muted" style={{ gridColumn: "1 / -1" }}>
                   {REQUIRED_PERIOD_TYPES.has(form.employment_type)
-                    ? "Enter how many days after the start date, or pick the end date on the calendar. Either one fills in the other."
+                    ? incompletePeriod ? "This existing record has missing employment dates. You can save changes and fill in either date when available." : "Enter how many days after the start date, or pick the end date on the calendar. Either one fills in the other."
                     : "Optional for contract. Enter how many days after the start date, or pick the end date on the calendar."}
                 </p>
               </>

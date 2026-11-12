@@ -1411,7 +1411,7 @@ function EmployeeForm({
           <label>End date
             <input
               type="date"
-              required={form.employment_type !== "CONTRACT"}
+              required={form.employment_type !== "CONTRACT" && !(initial && ["INTERN", "PROBATION"].includes(initial.employment_type) && (!initial.date_joined || !initial.date_ended))}
               value={form.date_ended}
               onChange={(e) => setForm({ ...form, date_ended: e.target.value })}
             />

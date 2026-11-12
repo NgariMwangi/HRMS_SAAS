@@ -79,13 +79,11 @@ def render(data):
     doc = BaseDocTemplate(output, pagesize=A4, leftMargin=17*mm, rightMargin=17*mm,
         topMargin=20*mm, bottomMargin=20*mm, title=f"Payslip {data['reference']}", author=data["company_name"],
         subject=f"{data['employee_name']} | {data['period_start']} to {data['period_end']}", pageCompression=1)
-    company = [p(data["company_name"], "company")]
+    company = []
     logo = logo_flowable(data.get("logo_data_url"), max_width=175, max_height=38)
     if logo:
-        company = [logo, Spacer(1, 8), *company]
-    if data.get("company_legal_name") and data["company_legal_name"] != data["company_name"]:
-        company += [Spacer(1, 5), p(data["company_legal_name"], "small")]
-    for key in ("company_email", "company_phone"):
+        company = [logo]
+    for key in ("company_phone",):
         if data.get(key):
             company += [Spacer(1, 3), p(data[key], "small")]
     initials = "".join(word[0] for word in data["company_name"].split()[:2])

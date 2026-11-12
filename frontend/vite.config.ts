@@ -3,6 +3,8 @@ import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
 const apiPaths = [
+  "/workforce",
+  "/legacy-import",
   "/domains",
   "/reports",
   "/recruitment",

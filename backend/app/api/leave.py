@@ -428,6 +428,8 @@ async def create_self_request(
 ) -> LeaveRequest:
     await require_actor(session, user, employee_id)
     mode = approval_mode.strip().upper()
+    if mode == "AUTO":
+        mode = "SUPERVISOR_THEN_HR" if await _has_supervisors(session, employee_id) else "HR_ONLY"
     if mode not in SELF_MODES:
         raise _bad("Choose supervisor then HR, or HR alone")
     employee = await session.get(Employee, employee_id)

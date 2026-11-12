@@ -53,7 +53,7 @@ class LeaveSelfCreate(BaseModel):
     end_on: date
     duration: Literal["FULL_DAY", "HALF_DAY", "QUARTER_DAY"] = "FULL_DAY"
     reason: str | None = Field(default=None, max_length=500)
-    approval_mode: str = Field(default="SUPERVISOR_THEN_HR", max_length=30)
+    approval_mode: str = Field(default="AUTO", max_length=30)
 
 
 class LeaveSupervisorCreate(BaseModel):

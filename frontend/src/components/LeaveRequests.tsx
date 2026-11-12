@@ -114,6 +114,7 @@ export function LeaveRequests({
   }
 
   async function submit(hrAction: "APPROVE_NOW" | "SEND_TO_SUPERVISOR") {
+    if (busy) return;
     if ((!canManageHr && !selfEmployeeId) || !employeeId || !leaveTypeId || !startOn || !endOn) return;
     if (endOn < startOn) {
       setError("End date cannot be before the start date");
@@ -137,7 +138,7 @@ export function LeaveRequests({
           duration,
           reason: reason.trim() || null,
           hr_action: hrAction,
-          approval_mode: hrAction === "SEND_TO_SUPERVISOR" ? "SUPERVISOR_THEN_HR" : "HR_ONLY",
+          approval_mode: canManageHr ? (hrAction === "SEND_TO_SUPERVISOR" ? "SUPERVISOR_THEN_HR" : "HR_ONLY") : "AUTO",
         }),
       });
       setRows((current) => [saved, ...current]);
@@ -189,6 +190,7 @@ export function LeaveRequests({
 
   function onCreate(event: FormEvent) {
     event.preventDefault();
+    if (!canManageHr) void submit("APPROVE_NOW");
   }
 
   const pending = (status: string) => status === "PENDING_HR" || status === "PENDING_SUPERVISOR";
@@ -237,7 +239,7 @@ export function LeaveRequests({
             </label>
           </div>
           {employeeId && supervisors.length === 0 ? (
-            <p className="muted" style={{ margin: "10px 0 0" }}>No supervisor is assigned. Use HR approval.</p>
+            <p className="muted" style={{ margin: "10px 0 0" }}>No supervisor is assigned. Your application will go to HR for approval.</p>
           ) : null}
           {employeeId && supervisors.length > 0 ? (
             <p className="muted" style={{ margin: "10px 0 0" }}>
@@ -250,18 +252,19 @@ export function LeaveRequests({
               {balance.unlimited ? "" : ` · Used ${formatLeaveDays(balance.used)} · Pending ${formatLeaveDays(balance.pending)}`}
             </p>
           ) : null}
+          {!canManageHr && <p className="muted" style={{ marginTop: 12 }}>Submit once to notify both HR and your assigned supervisor. Your supervisor responds first, then HR makes the final decision.</p>}
           <div className="actions" style={{ marginTop: 12 }}>
-            <button className="btn small" type="button" disabled={busy} onClick={() => void submit("APPROVE_NOW")}>
-              {busy ? "Saving…" : canManageHr ? "Approve now" : "Send to HR"}
+            <button className="btn small" type={canManageHr ? "button" : "submit"} disabled={busy} onClick={canManageHr ? () => void submit("APPROVE_NOW") : undefined}>
+              {busy ? "Sending…" : canManageHr ? "Approve now" : "Send application"}
             </button>
-            <button
+            {canManageHr && <button
               className="btn ghost small"
               type="button"
               disabled={busy || supervisors.length === 0}
               onClick={() => void submit("SEND_TO_SUPERVISOR")}
             >
               Send to supervisor
-            </button>
+            </button>}
             <button className="btn ghost small" type="button" onClick={resetForm}>Cancel</button>
           </div>
         </form>

@@ -47,10 +47,12 @@ async def test_leave_events_are_queued_then_delivered_to_work_emails(client,deli
     kind=await client.post("/leave-types",headers=owner,json={"company_id":w["company"]["id"],"name":"Annual emails","days":"21","accrued":False,"day_basis":"WORKING"})
     assert kind.status_code==201,kind.text
     body=dict(employee_id=employee["id"],leave_type_id=kind.json()["id"],start_on="2026-11-16",end_on="2026-11-16",
-        duration="HALF_DAY",approval_mode="SUPERVISOR_THEN_HR")
+        duration="HALF_DAY")
     applied=await client.post("/leave-requests/self",headers=employee_auth,json=body)
     assert applied.status_code==201,applied.text
     request=applied.json();path=f"/leave-requests/{request['id']}"
+    assert request["approval_mode"] == "SUPERVISOR_THEN_HR"
+    assert request["status"] == "PENDING_SUPERVISOR"
     assert not delivery  # Queueing must not call Brevo inside the request transaction.
     queued=await records()
     assert len(queued)==3 and {r.status for r in queued}=={"PENDING"}
@@ -115,8 +117,10 @@ async def test_missing_work_email_blocks_and_recovers_without_personal_fallback(
     assert response.status_code==200
     kind=await client.post("/leave-types",headers=owner,json={"company_id":w["company"]["id"],"name":"Email recovery","days":"21","accrued":False})
     request=await client.post("/leave-requests/self",headers=auth,json={"employee_id":person["id"],"leave_type_id":kind.json()["id"],
-        "start_on":"2026-11-16","end_on":"2026-11-16","approval_mode":"HR_ONLY"})
+        "start_on":"2026-11-16","end_on":"2026-11-16"})
     assert request.status_code==201,request.text
+    assert request.json()["approval_mode"] == "HR_ONLY"
+    assert request.json()["status"] == "PENDING_HR"
     await leave_emails.deliver_pending()
     rows=await records();blocked=next(row for row in rows if row.purpose=="application_confirmation")
     assert blocked.status=="BLOCKED" and all(call["json"]["to"][0]["email"]!="private@example.com" for call in delivery)

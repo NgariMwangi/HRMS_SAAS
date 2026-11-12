@@ -67,6 +67,7 @@ export function extensionDetail(row: LifecycleEvent): string {
 }
 
 function eventLabel(row: LifecycleEvent): string {
+  if (row.event_type === "TRANSFERRED") return row.reason === "IN" ? "Transferred into company" : "Transferred to another company";
   if (row.event_type === "HIRED") return "Employed";
   if (row.event_type === "SUSPENDED") return "Suspended";
   if (row.event_type === "REINSTATED") return "Unsuspended";
@@ -162,7 +163,7 @@ export function LifecycleTimeline({
             <td data-label="Detail">
               {row.event_type === "EXTENDED" ? `${extensionDetail(row)} ` : null}
               {row.event_type === "SUSPENDED" && suspensionPayText(row) ? `${suspensionPayText(row)}. ` : null}
-              {row.reason && row.event_type !== "ROLE_CHANGED" && row.event_type !== "REHIRED" ? `${row.reason}. ` : null}
+              {row.reason && !["ROLE_CHANGED", "REHIRED", "TRANSFERRED"].includes(row.event_type) ? `${row.reason}. ` : null}
               {row.to_job_title_id && row.to_job_title_id !== row.from_job_title_id
                 ? `Title: ${title.get(row.to_job_title_id) ?? "Updated"}. `
                 : null}

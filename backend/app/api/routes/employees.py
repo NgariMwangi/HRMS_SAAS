@@ -50,6 +50,7 @@ from app.schemas.employee import (
     EmployeeCreate,
     EmployeeRead,
     EmployeeUpdate,
+    EmployeeCompanyTransfer,
     LifecycleActionCreate,
     LifecycleActionResult,
     LifecycleAttachmentRead,
@@ -326,6 +327,19 @@ async def reset_clock_device(
         options=(selectinload(Employee.login_user),),
         populate_existing=True,
     )
+
+
+@router.post("/{employee_id}/transfer-company", response_model=EmployeeRead, dependencies=[Depends(require_access('people.manage'))])
+async def transfer_company(
+    employee_id: uuid.UUID,
+    payload: EmployeeCompanyTransfer,
+    tenant_id: uuid.UUID = Depends(get_tenant_id),
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_tenant_db),
+):
+    from app.services.employee_transfers import transfer_employee
+    employee = await transfer_employee(session, employee_id, tenant_id, payload, user.id)
+    return await session.get(Employee, employee.id, options=(selectinload(Employee.login_user),), populate_existing=True)
 
 
 @router.patch("/{employee_id}", response_model=EmployeeRead, dependencies=[Depends(require_access('people.manage'))])

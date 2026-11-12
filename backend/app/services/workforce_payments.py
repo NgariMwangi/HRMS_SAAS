@@ -147,6 +147,7 @@ async def create_overtime(session, tenant_id, payload, actor_id):
     if person is None:
         bad("Employee not found", 404)
     await company_lock(session, person.company_id, tenant_id)
+    await session.refresh(person)
     if person.status != "ACTIVE":
         bad("Overtime requires an active employee")
     if person.date_joined and min(payload.worked_dates) < person.date_joined:

@@ -44,6 +44,13 @@ class EmployeeCreate(BaseModel):
     supervisor_ids: list[uuid.UUID] | None = None
 
 
+class EmployeeCompanyTransfer(BaseModel):
+    company_id: uuid.UUID
+    branch_id: uuid.UUID
+    effective_on: date | None = None
+    note: str | None = Field(default=None, max_length=500)
+
+
 class EmployeeUpdate(BaseModel):
     branch_id: uuid.UUID | None = None
     department_id: uuid.UUID | None = None

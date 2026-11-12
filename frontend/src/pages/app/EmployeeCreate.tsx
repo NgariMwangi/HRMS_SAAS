@@ -4,6 +4,7 @@ import { useWorkspace } from "../../context/WorkspaceContext";
 import { api, apiBlob, apiUpload } from "../../api";
 import { NextOfKinFields } from "../../components/NextOfKinFields";
 import { SupervisorFields } from "../../components/SupervisorFields";
+import CompanyTransfer from "../../components/CompanyTransfer";
 import {
   employeeName,
   nextOfKinError,
@@ -18,7 +19,7 @@ import {
 } from "../../types";
 import { EmptyState, FormSkeleton, PageHeader } from "../../ui";
 
-const steps = ["Personal", "Contact", "Role", "Branch", "Review"];
+const steps = ["Personal", "Contact", "Role", "Company & branch", "Review"];
 const REQUIRED_PERIOD_TYPES = new Set(["INTERN", "PROBATION"]);
 const END_DATE_TYPES = new Set(["INTERN", "PROBATION", "CONTRACT"]);
 
@@ -624,6 +625,7 @@ export default function EmployeeCreate() {
           </button>
         </div>
       </form>
+      {step === 3 && isEdit && employeeId ? <CompanyTransfer key={employeeId} employeeId={employeeId} sourceCompanyId={companyId} busy={busy} setBusy={setBusy} /> : null}
     </>
   );
 }

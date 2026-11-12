@@ -1,6 +1,6 @@
 """Company isolation for domain-bound sessions, including superuser development DBs."""
 from fastapi import HTTPException
-from sqlalchemy import event, select
+from sqlalchemy import event, select, inspect
 from sqlalchemy.orm import Session, with_loader_criteria
 from app.db.base import Base
 from app.models import Company, Employee, User
@@ -51,6 +51,11 @@ def restrict_company_writes(session, _context, _instances):
             raise HTTPException(403, "This address is restricted to its company")
         # Every company-scoped foreign key must also belong to this company.
         for fk in table.foreign_keys:
+            # A completed company transfer leaves a read-only provenance link to
+            # the original employment record. Editing today's record must not
+            # require access to that other company's history.
+            if isinstance(obj, Employee) and fk.parent.key == "previous_employee_id" and obj not in session.new and not inspect(obj).attrs.previous_employee_id.history.has_changes():
+                continue
             criterion = table_scope(fk.column.table, company_id)
             value = getattr(obj, fk.parent.key, None)
             if criterion is None or value is None:

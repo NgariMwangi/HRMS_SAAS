@@ -307,6 +307,10 @@ async def _create_request(
     actor_employee_id: uuid.UUID | None,
     duration: str = "FULL_DAY",
 ) -> LeaveRequest:
+    await session.scalar(select(Company.id).where(Company.id == employee.company_id).with_for_update())
+    employee = await session.scalar(select(Employee).where(Employee.id == employee.id).with_for_update().execution_options(populate_existing=True))
+    if employee is None:
+        raise HTTPException(404, "Employee not found")
     if employee.status == "TERMINATED":
         raise _bad("Leave cannot be applied for a terminated employee. Use their current record.")
     closed = (

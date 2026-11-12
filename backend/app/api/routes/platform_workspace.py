@@ -74,6 +74,7 @@ from app.schemas.employee import (
     EmployeeCreate,
     EmployeeRead,
     EmployeeUpdate,
+    EmployeeCompanyTransfer,
     LifecycleActionCreate,
     LifecycleActionResult,
     LifecycleAttachmentRead,
@@ -1002,6 +1003,19 @@ async def get_employee_photo(
         content=employee.photo_bytes,
         media_type=employee.photo_content_type or "application/octet-stream",
     )
+
+
+@router.post("/employees/{employee_id}/transfer-company", response_model=EmployeeRead)
+async def transfer_company(
+    tenant_id: uuid.UUID,
+    employee_id: uuid.UUID,
+    payload: EmployeeCompanyTransfer,
+    session: AsyncSession = Depends(get_platform_db),
+    _: object = Depends(get_current_admin),
+):
+    from app.services.employee_transfers import transfer_employee
+    employee = await transfer_employee(session, employee_id, tenant_id, payload)
+    return await session.get(Employee, employee.id, options=(selectinload(Employee.login_user),), populate_existing=True)
 
 
 @router.patch("/employees/{employee_id}", response_model=EmployeeRead)

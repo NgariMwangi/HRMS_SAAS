@@ -7,6 +7,7 @@ import { suspensionPayText, type Department, type JobTitle, type LifecycleEvent 
 import { EmptyState, matchesSearch, PageHeader, SearchField, StatusPill, TableSkeleton, formatDate } from "../../ui";
 
 function eventLabel(row: LifecycleEvent): string {
+  if (row.event_type === "TRANSFERRED") return row.reason === "IN" ? "Transferred into company" : "Transferred to another company";
   if (row.event_type === "HIRED") return "Employed";
   if (row.event_type === "SUSPENDED") return "Suspended";
   if (row.event_type === "REINSTATED") return "Unsuspended";

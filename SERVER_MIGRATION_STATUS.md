@@ -1,5 +1,31 @@
 # Live SaaS migration completed - 11 November 2026
 
+## Incremental reconciliation completed - 18 November 2026
+
+Compared a fresh read-only source snapshot with the original migration snapshot.
+Applied four new leave applications (source IDs 148-151), six leave status and
+decision updates (83, 100, 103, 140, 141, 147), and five affected leave balances
+(27, 42, 70, 127, 128). Source-deleted pending application 143 was cancelled in
+the SaaS, retaining history and releasing its reservation. Copied the new
+attachment for application 149 and archived 72 additional source audit records.
+
+No source employee, salary, bank, company or payroll financial changes were
+found. Login activity/lock counters were not replayed into SaaS accounts.
+Unrelated SaaS changes, including Alex's corrected annual leave balance, were
+preserved. No notification emails were sent by this operation.
+
+Rollback rehearsal passed with no conflicts before committing. Independent
+verification checked all 11 affected requests, the five remaining balances and
+the attachment. Hash comparisons confirmed 18 employee, organization, account
+and payroll-related tables were unchanged. Repeat rehearsal found no new
+applications, decisions, attachments or audit records to import; API health was OK.
+
+Protected server artifacts, fresh source snapshot, before/after database backups
+and verification reports: `/root/backups/hrms-incremental-20261118`.
+The narrowly scoped operational script is
+`backend/scripts/sync_legacy_leave_delta.py`; it rolls back unless `--apply` is
+provided. This is a reviewed one-time update, not continuous synchronization.
+
 Server: `37.60.242.201`; deployment: `/root/apps/HRMS_SAAS`.
 Destination database: `hrms` in `hrms-saas-postgres-1`, still bound to loopback
 port 5433. Source: `hrms_kenya1`. Source records were never modified.

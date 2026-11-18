@@ -15,6 +15,7 @@ CATALOG = {
     "payroll": {"title": "Payroll", "description": "Saved payroll results, with separate totals for each currency.", "permissions": ["payroll.manage"]},
     "attendance": {"title": "Attendance", "description": "Recorded attendance, late and absent entries, and completed clock hours.", "permissions": ["attendance.manage"]},
     "leave": {"title": "Leave", "description": "Leave requests, approval status and requested days by leave type.", "permissions": ["leave.view_all", "leave.manage"]},
+    "leave-tracker": {"title": "Leave tracker", "description": "Employee leave entitlements, used days and remaining balances, with Excel export.", "permissions": ["leave.view_all", "leave.manage"]},
     "movement": {"title": "Employee movement", "description": "Hires, exits, transfers and other recorded employment changes.", "permissions": ["lifecycle.view_all", "lifecycle.manage"]},
 }
 MAX_ROWS = 50000
@@ -65,7 +66,7 @@ def status_filter(query, field, status, accepted):
     return query
 
 
-async def generate(session, tenant_id, company_id, kind, start_on, end_on, branch_id=None, department_id=None, status=None, q=None):
+async def generate(session, tenant_id, company_id, kind, start_on, end_on, branch_id=None, department_id=None, status=None, q=None, leave_type_id=None):
     if kind not in CATALOG:
         fail("Report not found", 404)
     company = await company_for_tenant(session, company_id, tenant_id)
@@ -89,6 +90,16 @@ async def generate(session, tenant_id, company_id, kind, start_on, end_on, branc
         # Treat search as literal text, not SQL wildcard patterns.
         term = "%" + q.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
         scoped_people.append(or_(func.concat_ws(" ", Employee.first_name, Employee.other_names, Employee.last_name).ilike(term, escape="\\"), Employee.employee_number.ilike(term, escape="\\")))
+    if kind == "leave-tracker":
+        from app.services.leave_tracker import build
+        if start_on.year != end_on.year:
+            fail("Choose a single calendar year for the leave tracker")
+        tracker = await build(session, company_id, end_on.year, scoped_people, branch_id, leave_type_id)
+        return dict(key=kind, title=CATALOG[kind]["title"], company=company.name, theme_color=company.theme_color,
+            logo_data_url=company.logo_data_url, branch=branch_name(branch_id) if branch_id else "All branches",
+            department=department_name(department_id) if department_id else "All departments",
+            start_on=start_on.replace(month=1, day=1), end_on=end_on.replace(month=12, day=31),
+            generated_at=datetime.now(timezone.utc).isoformat(), **tracker)
     rows = []
     breakdowns = []
     summaries = []

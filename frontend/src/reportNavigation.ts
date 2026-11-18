@@ -3,6 +3,7 @@ export const generalReports = [
   { key: "payroll", title: "Payroll", description: "Saved payroll results with separate totals for each currency.", permissions: ["payroll.manage"] },
   { key: "attendance", title: "Attendance", description: "Recorded attendance, lateness, absences and completed clock hours.", permissions: ["attendance.manage"] },
   { key: "leave", title: "Leave", description: "Leave requests, approval status and requested days by leave type.", permissions: ["leave.view_all", "leave.manage"] },
+  { key: "leave-tracker", title: "Leave tracker", description: "Employee leave entitlements, used days and remaining balances, with Excel export.", permissions: ["leave.view_all", "leave.manage"] },
   { key: "movement", title: "Employee movement", description: "Hires, exits and other recorded employment changes.", permissions: ["lifecycle.view_all", "lifecycle.manage"] },
 ];
 export function canVisitReports(path: string, has: (key: string) => boolean) {

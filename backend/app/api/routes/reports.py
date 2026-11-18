@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.access_control import require_access
 from app.api.deps import get_current_admin, get_current_user, get_platform_db, get_tenant_db
 from app.api.org import company_for_tenant
-from app.models import Branch, Department, PlatformAdmin, Tenant, User
+from app.models import Branch, Department, PlatformAdmin, Tenant, User, LeaveType
 from app.services import reports as service
 from app.services.access import permissions_for
 from app.core.permissions import ALL_PERMISSIONS
@@ -16,13 +16,13 @@ router = APIRouter(prefix="/reports", tags=["reports"], dependencies=[Depends(re
 platform_router = APIRouter(prefix="/platform/tenants/{tenant_id}/reports", tags=["platform-reports"])
 
 
-def selection(company_id: uuid.UUID, branch_id: uuid.UUID | None = None, department_id: uuid.UUID | None = None,
+def selection(company_id: uuid.UUID, leave_type_id: uuid.UUID | None = None, branch_id: uuid.UUID | None = None, department_id: uuid.UUID | None = None,
     start_on: date | None = None, end_on: date | None = None,
     status: str | None = Query(default=None, max_length=30), q: str | None = Query(default=None, max_length=100),
     page: int = Query(default=1, ge=1), page_size: int = Query(default=50, ge=1, le=250)):
     today = datetime.now(ZoneInfo("Africa/Nairobi")).date()
     end = end_on or today
-    return dict(company_id=company_id, branch_id=branch_id, department_id=department_id, start_on=start_on or end.replace(day=1), end_on=end, status=status, q=q, page=page, page_size=page_size)
+    return dict(company_id=company_id, leave_type_id=leave_type_id, branch_id=branch_id, department_id=department_id, start_on=start_on or end.replace(day=1), end_on=end, status=status, q=q, page=page, page_size=page_size)
 
 
 def no_cache(response):
@@ -33,7 +33,8 @@ async def catalog_data(session, tenant_id, company_id, permissions):
     company = await company_for_tenant(session, company_id, tenant_id)
     branches = list((await session.scalars(select(Branch).where(Branch.company_id == company_id).order_by(Branch.name))).all())
     departments = list((await session.scalars(select(Department).where(Department.company_id == company_id).order_by(Department.name))).all())
-    return dict(company=company.name, reports=service.allowed(permissions), branches=[dict(id=b.id, name=b.name) for b in branches], departments=[dict(id=d.id, name=d.name) for d in departments])
+    leave_types = list((await session.scalars(select(LeaveType).where(LeaveType.company_id == company_id).order_by(LeaveType.sort_order, LeaveType.name))).all())
+    return dict(leave_types=[dict(id=t.id, name=t.name) for t in leave_types], company=company.name, reports=service.allowed(permissions), branches=[dict(id=b.id, name=b.name) for b in branches], departments=[dict(id=d.id, name=d.name) for d in departments])
 
 
 async def generate(session, tenant_id, kind, filters, permissions=None):
@@ -105,3 +106,24 @@ async def platform_pdf(tenant_id: uuid.UUID, kind: str, filters: dict = Depends(
 async def platform_report(tenant_id: uuid.UUID, kind: str, response: Response, filters: dict = Depends(selection), session: AsyncSession = Depends(get_platform_db), _: PlatformAdmin = Depends(get_current_admin)):
     no_cache(response)
     return paginated(await generate(session, tenant_id, kind, filters), filters)
+
+
+async def tracker_excel(session, tenant_id, kind, filters, permissions=None):
+    if kind != "leave-tracker":
+        service.fail("Excel export is available for the leave tracker", 404)
+    value = await generate(session, tenant_id, kind, filters, permissions)
+    from app.services.leave_tracker import xlsx_bytes
+    from fastapi.concurrency import run_in_threadpool
+    content = await run_in_threadpool(xlsx_bytes, value)
+    return Response(content, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="leave-tracker-{value["year"]}.xlsx"', "Cache-Control": "no-store"})
+
+
+@router.get("/{kind}/xlsx")
+async def export_xlsx(kind: str, filters: dict = Depends(selection), session: AsyncSession = Depends(get_tenant_db), user: User = Depends(get_current_user)):
+    return await tracker_excel(session, user.tenant_id, kind, filters, await permissions_for(session, user))
+
+
+@platform_router.get("/{kind}/xlsx")
+async def platform_xlsx(tenant_id: uuid.UUID, kind: str, filters: dict = Depends(selection), session: AsyncSession = Depends(get_platform_db), _: PlatformAdmin = Depends(get_current_admin)):
+    return await tracker_excel(session, tenant_id, kind, filters)

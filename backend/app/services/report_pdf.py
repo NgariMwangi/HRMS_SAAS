@@ -11,6 +11,15 @@ from app.services.payslip_pdf import fonts
 
 
 def render(report):
+    if report.get("key") == "leave-tracker":
+        # A leave matrix can have dozens of columns. Print one employee/type
+        # per row so every value remains readable on landscape A4.
+        from app.services.reports import column
+        rows = [dict(employee_number=r['employee_number'], employee=r['employee'], leave_type=t['name'],
+                     **{key:r[t['id']+'_'+key] for key in ['entitled','used','remaining']})
+                for r in report['rows'] for t in report['tracker_types']]
+        report = {**report, 'rows':rows, 'columns':[column('employee_number','Employee no.'), column('employee','Employee'),
+            column('leave_type','Leave type'), *[column(k,k.title(),'decimal') for k in ['entitled','used','remaining']]]}
     fonts()
     buffer = BytesIO()
     size = landscape(A4)

@@ -74,7 +74,7 @@ async def test_reports_permission_boundaries_company_isolation_and_platform_acce
         assert (await client.get("/reports/catalog", headers=h, params={"company_id":cid})).status_code == 403
         assert (await client.get("/reports/headcount/export", headers=h, params={"company_id":cid})).status_code == 403
     catalog = await client.get("/reports/catalog", headers=hr, params={"company_id":cid})
-    assert catalog.status_code == 200 and len(catalog.json()["reports"]) == 5
+    assert catalog.status_code == 200 and len(catalog.json()["reports"]) == 6
     role = await create(client, owner, "/access/roles", {"name":"Headcount analyst", "permissions":["reports.view","people.view_all"]})
     assigned = await client.patch(f"/access/users/{identity['id']}", headers=owner, json={"role":role["key"]})
     assert assigned.status_code == 200
